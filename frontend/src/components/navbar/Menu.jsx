@@ -12,13 +12,19 @@ import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import HomeIcon from '@mui/icons-material/Home';
 import {Link, useLocation} from 'react-router-dom' // for links
+import { useState } from 'react';
 
 
 export default function Menu() {
-  const [open, setOpen] = React.useState(false);
+  const [openManager, setOpenManager] = useState(false);
+  const [openVolunteer, setOpenVolunteer] = useState(false);
 
-  const handleClick = () => {
-    setOpen(!open);
+  const handleManagerClick = () => {
+    setOpenManager(!openManager);
+  };
+  
+  const handleVolunteerClick = () => {
+    setOpenVolunteer(!openVolunteer);
   };
 
   const location = useLocation()
@@ -53,21 +59,21 @@ export default function Menu() {
     >
      
     
-      <ListItemButton onClick={handleClick} component={Link} to="/" selected={path === "/"}>
+      <ListItemButton onClick={handleManagerClick} >
         <ListItemIcon>
           <DashboardIcon />
         </ListItemIcon>
         <ListItemText primary="Managers" />
-        {open ? <ExpandLess /> : <ExpandMore />}
+        {openManager ? <ExpandLess /> : <ExpandMore />}
       </ListItemButton>
-      <Collapse in={open} timeout="auto" unmountOnExit>
+      <Collapse in={openManager} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
 
-          <ListItemButton sx={{ pl: 4 }}>
+          <ListItemButton sx={{ pl: 4 }} component={Link} to="/manager" selected={path === "/manager"}>
             <ListItemIcon>
               <DashboardCustomizeIcon />
             </ListItemIcon>
-            <ListItemText primary="Create" />
+            <ListItemText primary="All managers" />
           </ListItemButton>
 
           <ListItemButton sx={{ pl: 4 }}>
@@ -97,29 +103,29 @@ export default function Menu() {
     >
      
     
-      <ListItemButton onClick={handleClick} >
+      <ListItemButton onClick={handleVolunteerClick} >
         <ListItemIcon>
           <DashboardIcon />
         </ListItemIcon>
-        <ListItemText primary="Volontaires" />
-        {open ? <ExpandLess /> : <ExpandMore />}
+        <ListItemText primary="Volunteers" />
+        {openVolunteer ? <ExpandLess /> : <ExpandMore />}
       </ListItemButton>
-      <Collapse in={open} timeout="auto" unmountOnExit>
+      <Collapse in={openVolunteer} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
 
-          <ListItemButton sx={{ pl: 4 }} component={Link} to="/">
+          <ListItemButton sx={{ pl: 4 }} component={Link} to="/volunteer">
             <ListItemIcon>
               <DashboardCustomizeIcon />
             </ListItemIcon >
-            <ListItemText primary="Liste Volontaires" />
+            <ListItemText primary="All Volunteers" />
           </ListItemButton>
 
-          <ListItemButton sx={{ pl: 4 }} component={Link} to="/">
+          {/* <ListItemButton sx={{ pl: 4 }} component={Link} to="/">
             <ListItemIcon>
               <DashboardCustomizeIcon />
             </ListItemIcon>
             <ListItemText primary="Volontaires disponible" />
-          </ListItemButton>
+          </ListItemButton> */}
 
         </List>
       </Collapse>

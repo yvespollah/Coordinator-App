@@ -6,7 +6,9 @@ import TextForm from './forms/TextForm';
 import SelectForm from './forms/SelectForm';
 import Button from '@mui/material/Button'
 import {useFormik} from 'formik'
-
+import * as Yup from 'yup';
+import MyMessage from './forms/Message';
+import { useNavigate } from 'react-router-dom';
 
 const Create = () =>{
     const [manager, setManagers] = useState([])
@@ -14,8 +16,10 @@ const Create = () =>{
     const [task, setTask] = useState([])
     const [machine, setMachines] = useState([])
     const [availabilities, setAvailabilities] = useState([])
+    const [message, setMessage] = useState([])
+    const navigate = useNavigate()
 
-    console.log( "manager",manager)
+
 
 
     const GetData = () =>{
@@ -44,20 +48,49 @@ const Create = () =>{
         GetData()
     },[])
 
+    // defining rule
+    
+    const validationSchema = Yup.object({
+      username: Yup
+        .string("The name must be a text")
+        .required("The name is required"),
+      email: Yup
+        .string("The email must be a text")
+        .email("The email must be a valid email")
+        .required("The email is required"),
+      password: Yup
+        .string("The password must be a text")
+        .required("The password is required"),
+      status: Yup.string().required("Status is required"),
+
+    })  
+
     const formik = useFormik({
+      
       initialValues:{
         username: "",
         email: "",
         password: "",
-        registration_date: "",
+        status: "",
+   
 
       },
+      validationSchema: validationSchema,
+      
       onSubmit:(values) => {
         AxiosInstance.post(`managers/`,values)
         .then(()=>{
-          console.log("Successfull data submission")
-        })
-      }
+          setMessage(
+          <MyMessage
+            messageText={"You succesfully submitted data to the database"}
+            messagecolor={"green"}
+          />
+        )
+        setTimeout(() => {
+          navigate('/')
+        },1500)
+      })
+    }
     })
 
     const statusOptions = [
@@ -70,9 +103,11 @@ const Create = () =>{
         <div>
           <form onSubmit={formik.handleSubmit}>
             <Box className="Topbar">
-              <AddBoxIcon></AddBoxIcon>
+              <AddBoxIcon />
               <Typography sx={{marginLeft:'15px', fontWeight:'bold'}} variant='subtitle1'>Create Manager</Typography>
             </Box>
+
+            {message}
 
             <Box className={'FormBox'}>
                 
@@ -84,6 +119,8 @@ const Create = () =>{
                         value={formik.values.username}
                         onChange={formik.handleChange}
                         onBlur={formik.handleBlur}
+                        error={formik.touched.username && Boolean(formik.errors.username)}
+                        helperText={formik.touched.username && formik.errors.username}
                     />
                   </Box>
 
@@ -94,16 +131,8 @@ const Create = () =>{
                             value={formik.values.email}
                             onChange={formik.handleChange}
                             onBlur={formik.handleBlur}
-                        />
-                    </Box>
-
-                    <Box sx={{marginTop:'30px'}}>
-                        <TextForm
-                            label = {"Password"}
-                            name = 'password'
-                            value={formik.values.password}
-                            onChange={formik.handleChange}
-                            onBlur={formik.handleBlur}
+                            error={formik.touched.email && Boolean(formik.errors.email)}
+                            helperText={formik.touched.email && formik.errors.email}
                         />
                     </Box>
                     
@@ -118,7 +147,7 @@ const Create = () =>{
 
                 <Box className={'FormArea'}>
                     
-                    <Box sx={{marginTop:'30px'}}>
+                    {/* <Box sx={{marginTop:'30px'}}>
                         <TextForm
                             label = {"Registration Date"}
                             type="datetime-local"
@@ -141,7 +170,7 @@ const Create = () =>{
                             onChange={formik.handleChange}
                             onBlur={formik.handleBlur}
                         />
-                    </Box>
+                    </Box> */}
 
                     <Box sx={{marginTop:'30px'}}>
                         <SelectForm
@@ -151,8 +180,22 @@ const Create = () =>{
                             value={formik.values.status}
                             onChange={formik.handleChange}
                             onBlur={formik.handleBlur}
+                            error={formik.touched.status && Boolean(formik.errors.status)}
+                            helperText={formik.touched.status && formik.errors.status}
                         />
-                    </Box>                      
+                    </Box> 
+
+                      <Box sx={{marginTop:'30px'}}>
+                        <TextForm
+                            label = {"Password"}
+                            name = 'password'
+                            value={formik.values.password}
+                            onChange={formik.handleChange}
+                            onBlur={formik.handleBlur}
+                            error={formik.touched.password && Boolean(formik.errors.password)}
+                            helperText={formik.touched.password && formik.errors.password}
+                        />
+                    </Box>                     
                 </Box>
 
             </Box>  

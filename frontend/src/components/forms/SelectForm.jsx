@@ -5,7 +5,7 @@ import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
 
-export default function SelectForm({label,options,value,name,onChange,onBlur}) {
+export default function SelectForm({label,options,value,name,onChange,onBlur,error,helperText}) {
 
   return (
       <FormControl fullWidth>
@@ -18,6 +18,8 @@ export default function SelectForm({label,options,value,name,onChange,onBlur}) {
           name = {name}
           onChange={onChange}
           onBlur={onBlur}
+          error={error} // to show error state of the form turn in red 
+          helperText={helperText} // show error message
         >
 
           {
