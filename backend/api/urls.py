@@ -5,7 +5,7 @@ router = DefaultRouter()
 router.register(r'managers', ManagerViewSet)
 router.register(r'workflows', WorkflowViewSet)
 router.register(r'tasks', TaskViewSet)
-router.register(r'machines', MachineViewSet)
+router.register(r'volunteers', MachineViewSet)
 router.register(r'availabilities', AvailabilityViewSet)
 
 urlpatterns = router.urls

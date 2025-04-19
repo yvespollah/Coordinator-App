@@ -57,7 +57,7 @@ const Manager = () =>{
         <div>
             <Box className={"Topbar"}>
                 <CalendarViewMonthIcon/>
-                <Typography sx={{marginLeft:'15px', fontWeight:'bold'}} variant='subtitle2'>Liste of Managers</Typography>
+                <Typography sx={{marginLeft:'15px', fontWeight:'bold'}} variant='subtitle2'>All Managers</Typography>
             </Box>
 
             <MaterialReactTable

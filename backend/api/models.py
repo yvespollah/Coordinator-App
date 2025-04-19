@@ -120,6 +120,7 @@ class Task(models.Model):
     error_details = models.JSONField(default=dict, blank=True, null=True)
     docker_image = models.CharField(max_length=255, blank=True, null=True)
     
+    
     def __str__(self):
         return f"{self.name} ({self.workflow.name})"
     
