@@ -10,6 +10,27 @@ class ManagerSerializer(serializers.ModelSerializer):
             'password': {'write_only': True}
         }
 
+    def get_fields(self):
+        fields = super().get_fields()
+        # Only include password if it's a creation request
+        request = self.context.get('request', None)
+        if request and request.method in ['PUT', 'PATCH']:
+            fields.pop('password', None)
+        return fields
+
+    def create(self, validated_data):
+        password = validated_data.pop('password', None)
+        instance = super().create(validated_data)
+        if password:
+            instance.set_password(password)
+            instance.save()
+        return instance
+
+    def update(self, instance, validated_data):
+        # Prevent password from being updated here
+        validated_data.pop('password', None)
+        return super().update(instance, validated_data)
+
 # Workflow serializer
 class WorkflowSerializer(serializers.ModelSerializer):
     owner = ManagerSerializer(read_only=True)

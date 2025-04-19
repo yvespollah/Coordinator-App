@@ -22,8 +22,8 @@ function App() {
       <Route path="/manager" element={<Manager/>}/>
       <Route path="/volunteer" element={<Volunteer/>}/>
       <Route path="/create" element={<Create/>}/>
-      <Route path="/edit/:id" element={<Edit/>}/>
-      <Route path="/delete/:id" element={<Delete/>}/>
+      <Route path="/manager/edit/:id" element={<Edit/>}/>
+      <Route path="/manager/delete/:id" element={<Delete/>}/>
   </Routes>
     }
     />
