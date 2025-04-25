@@ -11,6 +11,13 @@ import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import HomeIcon from '@mui/icons-material/Home';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import ListAltIcon from '@mui/icons-material/ListAlt';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import ForumIcon from '@mui/icons-material/Forum';
+import SettingsIcon from '@mui/icons-material/Settings';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import {Link, useLocation} from 'react-router-dom' // for links
 import { useState } from 'react';
 
@@ -18,6 +25,7 @@ import { useState } from 'react';
 export default function Menu() {
   const [openManager, setOpenManager] = useState(false);
   const [openVolunteer, setOpenVolunteer] = useState(false);
+  const [openWorkflows, setOpenWorkflows] = useState(false);
 
   const handleManagerClick = () => {
     setOpenManager(!openManager);
@@ -25,6 +33,10 @@ export default function Menu() {
   
   const handleVolunteerClick = () => {
     setOpenVolunteer(!openVolunteer);
+  };
+
+  const handleWorkflowsClick = () => {
+    setOpenWorkflows(!openWorkflows);
   };
 
   const location = useLocation()
@@ -39,118 +51,119 @@ export default function Menu() {
     aria-labelledby="nested-list-subheader"
     >
 
-
-    <ListItemButton component={Link} to="/" selected={path === "/home"}>
+    {/* Home */}
+    <ListItemButton component={Link} to="/" selected={path === "/"}>
         <ListItemIcon>
             <HomeIcon />
         </ListItemIcon>
         <ListItemText primary="Home" />
     </ListItemButton>
-    
-    </List>
 
-    {/* ---------------managers------------------------------------- */}
-
-
-    <List
-      sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}
-      component="nav"
-      aria-labelledby="nested-list-subheader"
-    >
-     
-    
-      <ListItemButton onClick={handleManagerClick} >
+    {/* Managers */}
+    <ListItemButton onClick={handleManagerClick}>
         <ListItemIcon>
-          <DashboardIcon />
+            <DashboardIcon />
         </ListItemIcon>
         <ListItemText primary="Managers" />
         {openManager ? <ExpandLess /> : <ExpandMore />}
-      </ListItemButton>
-      <Collapse in={openManager} timeout="auto" unmountOnExit>
+    </ListItemButton>
+    <Collapse in={openManager} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
+            <ListItemButton sx={{ pl: 4 }} component={Link} to="/manager" selected={path === "/manager"}>
+                <ListItemIcon>
+                    <DashboardCustomizeIcon />
+                </ListItemIcon>
+                <ListItemText primary="All managers" />
+            </ListItemButton>
 
-          <ListItemButton sx={{ pl: 4 }} component={Link} to="/manager" selected={path === "/manager"}>
-            <ListItemIcon>
-              <DashboardCustomizeIcon />
-            </ListItemIcon>
-            <ListItemText primary="All managers" />
-          </ListItemButton>
+            {/* Workflows (with nested Tasks) */}
+            <ListItemButton sx={{ pl: 4 }} onClick={handleWorkflowsClick}>
+                <ListItemIcon>
+                    <AssignmentIcon />
+                </ListItemIcon>
+                <ListItemText primary="Workflows" />
+                {openWorkflows ? <ExpandLess /> : <ExpandMore />}
+            </ListItemButton>
+            <Collapse in={openWorkflows} timeout="auto" unmountOnExit>
+                <List component="div" disablePadding>
+                    <ListItemButton sx={{ pl: 8 }} component={Link} to="/workflows" selected={path === "/workflows"}>
+                        <ListItemIcon>
+                            <AssignmentIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary="All Workflows" />
+                    </ListItemButton>
+                </List>
+            </Collapse>
 
-          <ListItemButton sx={{ pl: 4 }}>
-            <ListItemIcon>
-              <DashboardCustomizeIcon />
-            </ListItemIcon>
-            <ListItemText primary="Workflow" />
-          </ListItemButton>
-
-          <ListItemButton sx={{ pl: 4 }}>
-            <ListItemIcon>
-              <DashboardCustomizeIcon />
-            </ListItemIcon>
-            <ListItemText primary="History of workflows" />
-          </ListItemButton>
-
+            <ListItemButton sx={{ pl: 4 }}>
+                <ListItemIcon>
+                    <DashboardCustomizeIcon />
+                </ListItemIcon>
+                <ListItemText primary="History of workflows" />
+            </ListItemButton>
         </List>
-      </Collapse>
-    </List>
+    </Collapse>
 
-{/* ---------------volontaires------------------------------------- */}
-
-    <List
-      sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}
-      component="nav"
-      aria-labelledby="nested-list-subheader"
-    >
-     
-    
-      <ListItemButton onClick={handleVolunteerClick} >
+    {/* Volunteers */}
+    <ListItemButton onClick={handleVolunteerClick}>
         <ListItemIcon>
-          <DashboardIcon />
+            <DashboardIcon />
         </ListItemIcon>
         <ListItemText primary="Volunteers" />
         {openVolunteer ? <ExpandLess /> : <ExpandMore />}
-      </ListItemButton>
-      <Collapse in={openVolunteer} timeout="auto" unmountOnExit>
-        <List component="div" disablePadding>
-
-          <ListItemButton sx={{ pl: 4 }} component={Link} to="/volunteer">
-            <ListItemIcon>
-              <DashboardCustomizeIcon />
-            </ListItemIcon >
-            <ListItemText primary="All Volunteers" />
-          </ListItemButton>
-
-          {/* <ListItemButton sx={{ pl: 4 }} component={Link} to="/">
-            <ListItemIcon>
-              <DashboardCustomizeIcon />
-            </ListItemIcon>
-            <ListItemText primary="Volontaires disponible" />
-          </ListItemButton> */}
-
-        </List>
-      </Collapse>
-    </List>
-
-    <List
-    sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}
-    component="nav"
-    aria-labelledby="nested-list-subheader"
-    subheader={
-    <ListSubheader component="div" id="nested-list-subheader">
-        Creating records
-    </ListSubheader>
-    }
-    >
-
-
-    <ListItemButton component={Link} to="/create" selected={path === "/create"}>
-        <ListItemIcon>
-            <AddBoxIcon />
-        </ListItemIcon>
-        <ListItemText primary="Create Manager" />
     </ListItemButton>
-    
+    <Collapse in={openVolunteer} timeout="auto" unmountOnExit>
+        <List component="div" disablePadding>
+            <ListItemButton sx={{ pl: 4 }} component={Link} to="/volunteer">
+                <ListItemIcon>
+                    <DashboardCustomizeIcon />
+                </ListItemIcon >
+                <ListItemText primary="All Volunteers" />
+            </ListItemButton>
+        </List>
+    </Collapse>
+
+    {/* Performance & Analytics */}
+    <ListItemButton component={Link} to="/analytics" selected={path === "/analytics"}>
+        <ListItemIcon>
+            <BarChartIcon />
+        </ListItemIcon>
+        <ListItemText primary="Performance & Analytics" />
+    </ListItemButton>
+
+    {/* Notifications */}
+    <ListItemButton component={Link} to="/notifications" selected={path === "/notifications"}>
+        <ListItemIcon>
+            <NotificationsIcon />
+        </ListItemIcon>
+        <ListItemText primary="Notifications" />
+    </ListItemButton>
+
+    {/* Communication/Logs */}
+    <ListItemButton component={Link} to="/logs" selected={path === "/logs"}>
+        <ListItemIcon>
+            <ForumIcon />
+        </ListItemIcon>
+        <ListItemText primary="Communication/Logs" />
+    </ListItemButton>
+
+    {/* Settings */}
+    <ListItemButton component={Link} to="/settings" selected={path === "/settings"}>
+        <ListItemIcon>
+            <SettingsIcon />
+        </ListItemIcon>
+        <ListItemText primary="Settings" />
+    </ListItemButton>
+
+    {/* Help */}
+    <ListItemButton component={Link} to="/help" selected={path === "/help"}>
+        <ListItemIcon>
+            <HelpOutlineIcon />
+        </ListItemIcon>
+        <ListItemText primary="Help" />
+    </ListItemButton>
     </List>
+
 
     </>
   );

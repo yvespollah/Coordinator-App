@@ -19,6 +19,14 @@
   box-shadow: rgba(100,100,111,0.2) 0px 7px 29px 0px;
 }
 
+.TextBox{
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  padding: 20px;
+  box-shadow: rgba(100,100,111,0.2) 0px 7px 29px 0px;
+}
+
 .FormArea{
   width: 33%;
   padding:15px;

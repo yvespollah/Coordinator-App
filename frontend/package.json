@@ -14,14 +14,15 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.4.11",
     "@mui/material": "^6.4.11",
-    "@mui/x-date-pickers": "^7.28.3",
     "axios": "^1.8.4",
+    "dayjs": "^1.11.13",
     "formik": "^2.4.6",
     "material-react-table": "^3.2.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router": "^6.30.0",
     "react-router-dom": "^6.30.0",
+    "recharts": "^2.15.3",
     "yup": "^1.6.1"
   },
   "devDependencies": {
