@@ -6,5 +6,5 @@ class ManagerConfig(AppConfig):
     name = 'manager'
 
     def ready(self):
-        from coordinator_project.db import connect_db2
-        connect_db2()
+        from coordinator_project.db import connect_db
+        connect_db()

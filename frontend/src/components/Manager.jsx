@@ -14,6 +14,8 @@ const Manager = () => {
             setMyData(res.data);
         });
     };
+    console.log("----------")
+    console.log(myData);
 
     useEffect(() => {
         GetData();
