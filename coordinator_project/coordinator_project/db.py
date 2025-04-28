@@ -1,8 +1,9 @@
-from mongoengine import connect
+from mongoengine import connect, disconnect
 
 def connect_db():
+    disconnect()
     connect(
-        db="volunteer_coordinator_db",
+        db="coordinator_db",
         host="localhost",
         port=27017
     )

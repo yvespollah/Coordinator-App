@@ -21,6 +21,8 @@ const Workflows = () => {
         const workflowsWithTasks = await Promise.all(
           wfRes.data.map(async (wf) => {
             const tasksRes = await AxiosInstance.get(`tasks/?workflow=${wf.id}`);
+            console.log("-----------------")
+            console.log(tasksRes)
             // Filter tasks to ensure only tasks with correct workflow id are included
             const filteredTasks = tasksRes.data.filter(task => String(task.workflow) === String(wf.id));
             return { ...wf, tasks: filteredTasks };
