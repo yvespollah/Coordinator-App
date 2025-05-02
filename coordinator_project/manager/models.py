@@ -2,6 +2,7 @@ from mongoengine import Document, StringField, DateTimeField, UUIDField, Boolean
 import uuid
 from datetime import datetime
 from mongoengine import CASCADE, NULLIFY
+from volunteer.models import Volunteer
 
 # Status constants
 STATUS_ACTIVE = 'active'

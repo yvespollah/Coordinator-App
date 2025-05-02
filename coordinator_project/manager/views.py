@@ -1,5 +1,11 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status as drf_status
+from mongoengine.connection import get_db
+from volunteer.models import Volunteer
 from .models import Manager, Workflow, Task
 from .serializers import (
     ManagerSerializer,
@@ -33,12 +39,16 @@ class ManagerViewSet(viewsets.ViewSet):
             manager = Manager.objects.get(id=pk)
         except Manager.DoesNotExist:
             return Response({'error': 'Manager not found'}, status=status.HTTP_404_NOT_FOUND)
-        # Utilise le serializer classique pour la mise à jour
+        # Utilise ManagerSerializer pour la mise à jour (inclut status)
         serializer = ManagerSerializer(manager, data=request.data, partial=True)
         if serializer.is_valid():
             manager = serializer.save()
-            return Response(ManagerDetailSerializer(manager).data)
+            return Response(ManagerSerializer(manager).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # Met à jour partielle (PATCH)
+    def partial_update(self, request, pk=None):
+        return self.update(request, pk)
 
     # Récupère le détail d'un manager (GET /manager/{id}/)
     def retrieve(self, request, pk=None):
@@ -155,3 +165,36 @@ class TaskViewSet(viewsets.ViewSet):
             return Response({'error': 'Task not found'}, status=status.HTTP_404_NOT_FOUND)
         task.delete()
         return Response({'success': 'Task deleted'}, status=status.HTTP_204_NO_CONTENT)
+
+
+# System Health check endpoint
+class SystemHealthView(APIView):
+    def get(self, request):
+        # Check DB connection
+        try:
+            db = get_db()
+            db_status = "connected"
+        except Exception:
+            db_status = "disconnected"
+
+        # Count active volunteers
+        try:
+            active_volunteers = Volunteer.objects(current_status="available").count()
+            print("----------------")
+            print(active_volunteers)
+        except Exception:
+            active_volunteers = 0
+
+        # For now, mock recent errors (to be improved)
+        recent_errors = 0
+
+        status_value = "ok" if db_status == "connected" and active_volunteers > 0 else "warning"
+
+        return Response({
+            "status": status_value,
+            "details": {
+                "database": db_status,
+                "active_volunteers": active_volunteers,
+                "recent_errors": recent_errors
+            }
+        })
