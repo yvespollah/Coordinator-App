@@ -14,8 +14,7 @@ const Manager = () => {
             setMyData(res.data);
         });
     };
-    console.log("----------")
-    console.log(myData);
+  
 
     useEffect(() => {
         GetData();
@@ -28,11 +27,12 @@ const Manager = () => {
     };
 
     const handleToggleStatus = (manager) => {
-        const newStatus = manager.status === 'active' ? 'active' : 'suspended';
+        const newStatus = manager.status === 'active' ? 'suspended' : 'active';
         AxiosInstance.patch(`managers/${manager.id}/`, { status: newStatus })
             .then(() => GetData());
+            console.log(`Manager ${manager.id} ${manager.username} status changed to ${newStatus}`);
     };
-
+    
     const columns = useMemo(
         () => [
             { accessorKey: 'username', header: 'Name' },

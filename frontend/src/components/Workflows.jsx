@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Box, Typography, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 import { MaterialReactTable } from 'material-react-table';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -6,31 +6,39 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import AxiosInstance from './axios';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 
-const Workflows = () => {
+function Workflows() {
   const [workflows, setWorkflows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState({});
-  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [error, setError] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [expanded, setExpanded] = useState({});
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
+      setError(null);
       try {
         const wfRes = await AxiosInstance.get('workflows/');
-        // For each workflow, fetch its tasks and filter them by workflow ID just in case
         const workflowsWithTasks = await Promise.all(
           wfRes.data.map(async (wf) => {
-            const tasksRes = await AxiosInstance.get(`tasks/?workflow=${wf.id}`);
-            console.log("-----------------")
-            console.log(tasksRes)
-            // Filter tasks to ensure only tasks with correct workflow id are included
-            const filteredTasks = tasksRes.data.filter(task => String(task.workflow) === String(wf.id));
-            return { ...wf, tasks: filteredTasks };
+            try {
+              const tasksRes = await AxiosInstance.get(`tasks/?workflow=${wf.id}`);
+             
+              const filteredTasks = Array.isArray(tasksRes.data)
+                ? tasksRes.data.filter(task => String(task.workflow) === String(wf.id))
+                : [];
+              return { ...wf, tasks: filteredTasks };
+            } catch (taskErr) {
+              console.error(`Erreur lors du chargement des tâches pour le workflow ${wf.id}:`, taskErr);
+              return { ...wf, tasks: [], taskError: true };
+            }
           })
         );
         setWorkflows(workflowsWithTasks);
-      } catch (error) {
-        setWorkflows([]);
+      } catch (err) {
+        console.error('Erreur lors du chargement des workflows:', err);
+        setError('Failed to load workflows. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -47,7 +55,6 @@ const Workflows = () => {
     ], []
   );
 
-  // Task detail dialog
   const handleTaskRowClick = (task) => {
     setSelectedTask(task);
     setTaskDialogOpen(true);
@@ -57,30 +64,41 @@ const Workflows = () => {
     setSelectedTask(null);
   };
 
-  // Expandable content renderer for each workflow row
+  // Rendu de la liste des tâches pour chaque workflow
   const renderDetailPanel = ({ row }) => (
     <Box sx={{ p: 2, background: '#f8fafc' }}>
       <Typography variant="subtitle1" fontWeight={600} gutterBottom>
         Volunteers Assigned to Tasks
       </Typography>
-      <MaterialReactTable
-        columns={[
-          {
-            accessorKey: 'assigned_to',
-            header: 'Volunteer (Assigned To)',
-            Cell: ({ row }) => row.original.assigned_to?.name || '-',
-          },
-          { accessorKey: 'name', header: 'Task Name' },
-          { accessorKey: 'status', header: 'Task Status' },
-        ]}
-        data={row.original.tasks}
-        enableTopToolbar={false}
-        enableBottomToolbar={false}
-        muiTableBodyCellProps={{ sx: { py: 1, cursor: 'pointer' } }}
-        muiTableBodyRowProps={({ row: taskRow }) => ({ onClick: () => handleTaskRowClick(taskRow.original) })}
-      />
+      {row.original.taskError && (
+        <div style={{ color: 'red' }}>Erreur lors du chargement des tâches pour ce workflow.</div>
+      )}
+      {row.original.tasks.length === 0 && !row.original.taskError && (
+        <div>Aucune tâche trouvée pour ce workflow.</div>
+      )}
+      {row.original.tasks.length > 0 && (
+        <MaterialReactTable
+          columns={[
+            {
+              accessorKey: 'assigned_to',
+              header: 'Volunteer (Assigned To)',
+              Cell: ({ row }) => row.original.assigned_to?.name || '-',
+            },
+            { accessorKey: 'name', header: 'Task Name' },
+            { accessorKey: 'status', header: 'Task Status' },
+          ]}
+          data={row.original.tasks}
+          enableTopToolbar={false}
+          enableBottomToolbar={false}
+          muiTableBodyCellProps={{ sx: { py: 1, cursor: 'pointer' } }}
+          muiTableBodyRowProps={({ row: taskRow }) => ({ onClick: () => handleTaskRowClick(taskRow.original) })}
+        />
+      )}
     </Box>
   );
+
+  if (loading) return <CircularProgress />;
+  if (error) return <Typography style={{ color: 'red' }}>{error}</Typography>;
 
   return (
     <Box sx={{ p: { xs: 2, md: 4 }, background: '#f5f6fa', minHeight: '100vh' }}>
@@ -89,18 +107,14 @@ const Workflows = () => {
         <AssignmentIcon sx={{ mr: 1 }} />
         <Typography sx={{ fontWeight: 'bold' }} variant='subtitle2'>All Workflows</Typography>
       </Box>
-      {loading ? (
-        <CircularProgress />
-      ) : (
-        <MaterialReactTable
-          columns={columns}
-          data={workflows}
-          enableExpanding
-          renderDetailPanel={renderDetailPanel}
-          muiTableBodyRowProps={({ row }) => ({ hover: true })}
-          muiTableContainerProps={{ sx: { borderRadius: 2, boxShadow: 1, background: 'white' } }}
-        />
-      )}
+      <MaterialReactTable
+        columns={columns}
+        data={workflows}
+        enableExpanding
+        renderDetailPanel={renderDetailPanel}
+        muiTableBodyRowProps={({ row }) => ({ hover: true })}
+        muiTableContainerProps={{ sx: { borderRadius: 2, boxShadow: 1, background: 'white' } }}
+      />
       {/* Task Detail Dialog */}
       <Dialog open={taskDialogOpen} onClose={handleTaskDialogClose} maxWidth="sm" fullWidth>
         <DialogTitle>Task Details</DialogTitle>
@@ -124,6 +138,6 @@ const Workflows = () => {
       </Dialog>
     </Box>
   );
-};
+}
 
 export default Workflows;

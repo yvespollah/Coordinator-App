@@ -22,7 +22,11 @@ class ManagerSerializer(serializers.Serializer):
     def update(self, instance, validated_data):
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        instance.save()
+        try:
+            instance.save()
+        except Exception as e:
+            print(f'[ManagerSerializer.update] Erreur MongoEngine lors du save: {e}')
+            raise serializers.ValidationError({'mongoengine': str(e)})
         return instance
 
 class ManagerRegistrationSerializer(serializers.Serializer):

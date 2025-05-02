@@ -1,55 +1,37 @@
 import uuid
-from mongoengine import Document, StringField, IntField, DateTimeField, DictField, ListField, BooleanField
+from mongoengine import (
+    Document, StringField, IntField, DateTimeField, DictField, BooleanField, UUIDField
+)
 from django.utils import timezone
 
+VOLUNTEER_STATUS_CHOICES = [
+    ('available', 'Available'),
+    ('busy', 'Busy'),
+    ('offline', 'Offline'),
+]
+
 class Volunteer(Document):
-    id = StringField(primary_key=True, default=lambda: str(uuid.uuid4()))
-    name = StringField(max_length=100, required=True)
-    cpu_model = StringField(max_length=100, required=True)
+    id = UUIDField(primary_key=True, default=uuid.uuid4)
+    name = StringField(max_length=255, required=True)
+    cpu_model = StringField(max_length=255, required=True)
     cpu_cores = IntField(required=True)
-    total_ram = IntField(help_text="RAM in MB", required=True)
-    available_storage = IntField(help_text="Storage in GB", required=True)
+    total_ram = IntField(required=True, help_text="RAM in MB")
+    available_storage = IntField(required=True, help_text="Storage in GB")
     operating_system = StringField(max_length=255, required=True)
+    last_update = DateTimeField(default=timezone.now)
+    current_status = StringField(max_length=20, choices=VOLUNTEER_STATUS_CHOICES, default='available')
     gpu_available = BooleanField(default=False)
     gpu_model = StringField(max_length=255, null=True)
-    gpu_memory = IntField(help_text="GPU memory in MB", null=True)
-    # ip_address = StringField(required=True)
-    # communication_port = IntField(required=True)
-    preferences = DictField(default=dict ,null=True)
+    gpu_memory = IntField(null=True, help_text="GPU memory in MB")
+    ip_address = StringField(required=True)
+    communication_port = IntField(required=True)
+    preferences = DictField(default=dict)
+    performance = DictField(default=dict)
+    last_activity = DateTimeField(null=True)
 
-    status = StringField(default='offline', choices=['offline', 'available', 'busy'])
-    last_connected = DateTimeField(null=True)
-    connection_history = ListField(DictField(), default=list)
-    created_at = DateTimeField(default=timezone.now)
-    updated_at = DateTimeField(default=timezone.now)
+    def __str__(self):
+        return f"Machine {self.name} - {self.current_status}"
 
-
-    
     meta = {
         'collection': 'volunteers'
     }
-
-    def update_status(self, new_status):
-        old_status = self.status
-        self.status = new_status
-        self.updated_at = timezone.now()
-
-        if not isinstance(self.connection_history, list):
-            self.connection_history = []
-
-        self.connection_history.append({
-            'timestamp': timezone.now().isoformat(),
-            'from': old_status,
-            'to': new_status
-        })
-
-        self.save()
-
-    def register_connection(self):
-        self.last_connected = timezone.now()
-        self.update_status('available')
-
-    def register_disconnection(self):
-        self.update_status('offline')
-
-

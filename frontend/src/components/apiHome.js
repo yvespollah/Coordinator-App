@@ -33,7 +33,7 @@ export const fetchAnnouncements = async () => {
 };
 
 export const fetchActiveVolunteers = async () => {
-  const res = await AxiosInstance.get('volunteers/?active=true&limit=5');
+  const res = await AxiosInstance.get('api/volunteers/?active=true&limit=5');
   return Array.isArray(res.data) ? res.data : [];
 };
 
@@ -44,7 +44,7 @@ export const fetchRunningWorkflows = async () => {
 };
 
 export async function fetchSystemHealth() {
-  const res = await AxiosInstance.get('health/');
+  const res = await AxiosInstance.get('system-health/');
   return res.data;
 }
 

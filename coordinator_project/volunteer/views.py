@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status,permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
@@ -6,58 +6,40 @@ from .utils.jwt_utils import generate_jwt
 from .decorators.auth_decorators import jwt_required
 from django.utils import timezone
 from .models import Volunteer
-from .serializers import (
-    VolunteerSerializer,
-    VolunteerRegistrationSerializer,
-    VolunteerDetailSerializer
-)
+from .serializers import VolunteerSerializer
 
 class VolunteerViewSet(viewsets.ViewSet):
+    permission_classes = [permissions.AllowAny]
 
     def list(self, request):
         volunteers = Volunteer.objects.all()
         serializer = VolunteerSerializer(volunteers, many=True)
         return Response(serializer.data)
 
+    def create(self, request):
+        serializer = VolunteerSerializer(data=request.data)
+        if serializer.is_valid():
+            volunteer = serializer.save()
+            return Response(VolunteerSerializer(volunteer).data, status=201)
+        return Response(serializer.errors, status=400)
+
     def retrieve(self, request, pk=None):
         try:
             volunteer = Volunteer.objects.get(id=pk)
         except Volunteer.DoesNotExist:
             return Response({'error': 'Volunteer not found'}, status=status.HTTP_404_NOT_FOUND)
-        serializer = VolunteerDetailSerializer(volunteer)
+        serializer = VolunteerSerializer(volunteer)
         return Response(serializer.data)
-
-    def create(self, request):
-        serializer = VolunteerRegistrationSerializer(data=request.data)
-        if serializer.is_valid():
-            volunteer = serializer.save()
-            token = generate_jwt(volunteer.id)
-            return Response({
-                'volunteer': VolunteerDetailSerializer(volunteer).data,
-                'token': token
-            }, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def update(self, request, pk=None):
         try:
             volunteer = Volunteer.objects.get(id=pk)
         except Volunteer.DoesNotExist:
             return Response({'error': 'Volunteer not found'}, status=status.HTTP_404_NOT_FOUND)
-        serializer = VolunteerRegistrationSerializer(volunteer, data=request.data)
+        serializer = VolunteerSerializer(volunteer, data=request.data, partial=True)
         if serializer.is_valid():
             volunteer = serializer.save()
-            return Response(VolunteerDetailSerializer(volunteer).data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    
-        try:
-            volunteer = Volunteer.objects.get(id=pk)
-        except Volunteer.DoesNotExist:
-            return Response({'error': 'Volunteer not found'}, status=status.HTTP_404_NOT_FOUND)
-        serializer = VolunteerRegistrationSerializer(volunteer, data=request.data, partial=True)
-        if serializer.is_valid():
-            volunteer = serializer.save()
-            return Response(VolunteerDetailSerializer(volunteer).data)
+            return Response(VolunteerSerializer(volunteer).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def destroy(self, request, pk=None):
@@ -66,7 +48,8 @@ class VolunteerViewSet(viewsets.ViewSet):
         except Volunteer.DoesNotExist:
             return Response({'error': 'Volunteer not found'}, status=status.HTTP_404_NOT_FOUND)
         volunteer.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({'success': 'Volunteer deleted'}, status=status.HTTP_204_NO_CONTENT)
+
 
     @action(detail=False, methods=['get'])
     @jwt_required

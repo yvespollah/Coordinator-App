@@ -101,7 +101,6 @@ const Home = () => {
     );
 
     // System Health
-    setLoadingHealth(true);
     fetchSystemHealth().then(
       (data) => {
         setSystemHealth(data);
@@ -112,6 +111,8 @@ const Home = () => {
         setLoadingHealth(false);
       }
     );
+    
+
 
     // Analytics (Charts)
     setLoadingCharts(true);
@@ -124,6 +125,9 @@ const Home = () => {
       setLoadingCharts(false);
     });
   }, []);
+  console.log('workflowStatusData:', workflowStatusData);
+  console.log('volunteerStatusData:', volunteerStatusData);
+
 
   return (
     <Box sx={{ p: { xs: 2, md: 4 }, background: '#f5f6fa', minHeight: '100vh' }}>
@@ -146,7 +150,7 @@ const Home = () => {
         ) : (
           [
             { label: 'Managers', value: stats.managers, icon: <DashboardIcon color="primary" /> },
-            { label: 'Volunteers', value: stats.volunteers, icon: <GroupIcon color="success" /> },
+            { label: 'Volunteers', value: stats.volunteers, icon: <GroupIcon color="success" /> }, 
             { label: 'Workflows', value: stats.workflows, icon: <AssignmentIcon color="info" /> },
             { label: 'Tasks', value: stats.tasks, icon: <ListAltIcon color="warning" /> },
           ].map((stat) => (
@@ -162,6 +166,7 @@ const Home = () => {
           ))
         )}
       </Grid>
+      
 
       {/* Running Workflows Widget */}
       <Paper elevation={1} sx={{ p: 3, mb: 4, borderRadius: 2, background: '#fffbea' }}>
@@ -227,8 +232,10 @@ const Home = () => {
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie data={workflowStatusData} dataKey="count" nameKey="status" cx="50%" cy="50%" outerRadius={80} fill="#1976d2" label>
+                    
                     {workflowStatusData.map((entry, idx) => (
                       <Cell key={`cell-wf-${entry.status}`} fill={STATUS_COLORS[entry.status] || '#90caf9'} />
+                      
                     ))}
                   </Pie>
                   <Legend />
@@ -238,6 +245,7 @@ const Home = () => {
             )}
           </Paper>
         </Grid>
+        
         <Grid item xs={12} md={6}>
           <Paper elevation={1} sx={{ p: 3, borderRadius: 2, height: 340 }}>
             <Typography variant="h6" fontWeight={600} mb={2}>Volunteers by Status</Typography>
@@ -260,6 +268,7 @@ const Home = () => {
           </Paper>
         </Grid>
       </Grid>
+      
 
       {/* Active Volunteers Widget */}
       <Paper elevation={1} sx={{ p: 3, borderRadius: 2 }}>
