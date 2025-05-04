@@ -3,8 +3,6 @@ from rest_framework.routers import DefaultRouter
 from .views import VolunteerViewSet
 
 router = DefaultRouter()
-router.register(r'volunteers', VolunteerViewSet, basename='volonteer')
+router.register(r'volunteers', VolunteerViewSet, basename='volunteer')
 
-urlpatterns = [
-    path('api/', include(router.urls))
-]
+urlpatterns = router.urls
