@@ -67,7 +67,9 @@ class MessageBroker:
         default_channels = [
             # Canaux d'authentification
             ("auth/register", "Inscription des managers et volunteers"),
-            ("auth/response", "Réponses d'authentification"),
+            ("auth/register_response", "Réponses d'inscription"),
+            ("auth/login", "Connexion des managers et volunteers"),
+            ("auth/login_response", "Réponses d'authentification"),
             
             # Canaux des tâches
             ("tasks/new", "Nouvelles tâches des managers"),
@@ -78,8 +80,11 @@ class MessageBroker:
             # Canaux de coordination
             ("coord/heartbeat/#", "Signaux de vie des participants"),
             ("coord/status", "État global du système"),
+            ("coord/emergency", "Messages d'urgence"),
             
             # Canaux des volunteers
+            ("volunteer/register", "Inscription des volunteers"),
+            ("volunteer/register_response", "Réponses d'inscription des volunteers"),
             ("volunteer/available", "Liste des volunteers disponibles"),
             ("volunteer/resources", "Ressources des volunteers"),
             
@@ -171,7 +176,7 @@ class MessageBroker:
             broker.subscribe('tasks/new', on_task)
         """
         if channel not in self._channels:
-            raise ValueError(f"Canal {channel} n'existe pas")
+            self.create_channel(channel, f"Canal créé automatiquement: {channel}")
             
         def message_handler(message):
             try:
@@ -197,63 +202,36 @@ class MessageBroker:
             
         Returns:
             bool: True si publié, False si erreur
-            
-        Example:
-            broker.publish('tasks/new', {
-                'task_id': '123',
-                'type': 'analyse',
-                'data': {'file': 'data.csv'}
-            })
         """
-        if channel not in self._channels:
-            logger.error(f"Canal {channel} n'existe pas")
-            return False
-            
         try:
-            message_data = json.dumps(message)
-            self.redis_client.publish(channel, message_data)
+            # Créer le canal s'il n'existe pas
+            if channel not in self._channels:
+                self.create_channel(channel, f"Canal créé automatiquement: {channel}")
+                
+            # Convertir le message en JSON
+            if isinstance(message, str):
+                json_message = message
+            else:
+                json_message = json.dumps(message)
+                
+            # Publier le message
+            self.redis_client.publish(channel, json_message)
             logger.debug(f"Message publié sur {channel}")
             return True
             
         except Exception as e:
-            logger.error(f"Erreur lors de la publication: {e}")
+            logger.error(f"Erreur lors de la publication sur {channel}: {e}")
             return False
-
+            
     def start_listening(self):
-        """Démarre l'écoute des messages dans un thread séparé."""
-        try:
-            self.pubsub.run_in_thread(sleep_time=0.001)
-            logger.info("Écoute des messages démarrée")
-        except Exception as e:
-            logger.error(f"Erreur au démarrage de l'écoute: {e}")
-
+        """
+        Démarre l'écoute des messages en mode bloquant.
+        Utilise les callbacks définis avec subscribe().
+        """
+        logger.info("Démarrage de l'écoute des messages")
+        self.pubsub.run_in_thread(sleep_time=0.01)
+        
     def stop_listening(self):
         """Arrête l'écoute des messages."""
-        try:
-            self.pubsub.close()
-            logger.info("Écoute des messages arrêtée")
-        except Exception as e:
-            logger.error(f"Erreur à l'arrêt de l'écoute: {e}")
-
-    def get_channel_stats(self, channel_name: str) -> dict:
-        """
-        Obtient des statistiques sur un canal.
-        
-        Args:
-            channel_name: Nom du canal
-            
-        Returns:
-            dict: Statistiques du canal
-        """
-        channel = self._channels.get(channel_name)
-        if not channel:
-            return {}
-            
-        return {
-            'name': channel.name,
-            'description': channel.description,
-            'created_at': channel.created_at.isoformat(),
-            'active': channel.active,
-            'subscribers': channel.subscribers,
-            'messages_today': self.redis_client.get(f"stats:{channel_name}:today") or 0
-        }
+        logger.info("Arrêt de l'écoute des messages")
+        self.pubsub.close()

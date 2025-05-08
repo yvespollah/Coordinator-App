@@ -1,45 +1,49 @@
-import React, { useState } from 'react';
-import { Box, Typography, Paper, Tabs, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip } from '@mui/material';
-import MessageIcon from '@mui/icons-material/Message';
-import SyncIcon from '@mui/icons-material/Sync';
-import HistoryIcon from '@mui/icons-material/History';
-
-// TabPanel component for the tabs
-function TabPanel(props) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`simple-tabpanel-${index}`}
-      aria-labelledby={`simple-tab-${index}`}
-      {...other}
-    >
-      {value === index && (
-        <Box sx={{ pt: 3 }}>
-          {children}
-        </Box>
-      )}
-    </div>
-  );
-}
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, CircularProgress, Alert, Button } from '@mui/material';
+import SettingsInputAntennaIcon from '@mui/icons-material/SettingsInputAntenna';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import { fetchChannels } from './apiLogs';
 
 const Logs = () => {
-  const [tabValue, setTabValue] = useState(0);
+  const [channels, setChannels] = useState([]);
+  const [loadingChannels, setLoadingChannels] = useState(false);
+  const [errorChannels, setErrorChannels] = useState(null);
 
-  // Handle tab change
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
+  // Fetch channels data when component mounts
+  useEffect(() => {
+    fetchChannelsData();
+  }, []);
+
+  // Function to fetch channels data
+  const fetchChannelsData = async () => {
+    setLoadingChannels(true);
+    setErrorChannels(null);
+    try {
+      const channelsData = await fetchChannels();
+      console.log('Channels data:', channelsData);
+      setChannels(channelsData);
+    } catch (error) {
+      console.error('Error fetching channels:', error);
+      setErrorChannels('Failed to load communication channels. Please try again later.');
+    } finally {
+      setLoadingChannels(false);
+    }
   };
 
-  // Exemple de données de communication simulées
-  const recentMessages = [
-    { id: 1, type: 'manager', title: 'Manager Status', content: 'Manager admin is now active', timestamp: '2025-05-04T19:30:00Z' },
-    { id: 2, type: 'volunteer', title: 'Volunteer Status', content: 'Volunteer V-1001 is now available', timestamp: '2025-05-04T19:25:00Z' },
-    { id: 3, type: 'task', title: 'New Task', content: 'Task T-2345: Data Processing', timestamp: '2025-05-04T19:20:00Z' },
-    { id: 4, type: 'result', title: 'Task Result', content: 'Task T-2344 completed with status: success', timestamp: '2025-05-04T19:15:00Z' },
-    { id: 5, type: 'manager', title: 'Manager Status', content: 'Manager user1 is now inactive', timestamp: '2025-05-04T19:10:00Z' }
+  // Exemple de données de canaux simulées (utilisées si l'API ne retourne pas de données)
+  const sampleChannels = channels.length > 0 ? channels : [
+    { name: 'auth/register', description: 'Inscription des managers et volunteers', created_at: '2025-05-01T10:00:00Z', active: true, subscribers: 3 },
+    { name: 'auth/response', description: 'Réponses d\'authentification', created_at: '2025-05-01T10:00:00Z', active: true, subscribers: 2 },
+    { name: 'tasks/new', description: 'Nouvelles tâches des managers', created_at: '2025-05-01T10:00:00Z', active: true, subscribers: 5 },
+    { name: 'tasks/assign', description: 'Attribution des tâches aux volunteers', created_at: '2025-05-01T10:00:00Z', active: true, subscribers: 4 },
+    { name: 'tasks/status/#', description: 'État des tâches en cours', created_at: '2025-05-01T10:00:00Z', active: true, subscribers: 7 },
+    { name: 'tasks/result/#', description: 'Résultats des tâches terminées', created_at: '2025-05-01T10:00:00Z', active: true, subscribers: 6 },
+    { name: 'coord/heartbeat/#', description: 'Signaux de vie des participants', created_at: '2025-05-01T10:00:00Z', active: true, subscribers: 8 },
+    { name: 'coord/status', description: 'État global du système', created_at: '2025-05-01T10:00:00Z', active: true, subscribers: 2 },
+    { name: 'volunteer/available', description: 'Liste des volunteers disponibles', created_at: '2025-05-01T10:00:00Z', active: true, subscribers: 3 },
+    { name: 'volunteer/resources', description: 'Ressources des volunteers', created_at: '2025-05-01T10:00:00Z', active: true, subscribers: 2 },
+    { name: 'manager/status', description: 'État des managers', created_at: '2025-05-01T10:00:00Z', active: true, subscribers: 4 },
+    { name: 'manager/requests', description: 'Requêtes spéciales des managers', created_at: '2025-05-01T10:00:00Z', active: true, subscribers: 3 }
   ];
 
   // Fonction pour formater les timestamps
@@ -52,121 +56,108 @@ const Logs = () => {
     }
   };
 
-  // Fonction pour obtenir la couleur du chip en fonction du type de message
-  const getChipColor = (type) => {
-    switch (type) {
-      case 'manager':
-        return 'primary';
-      case 'volunteer':
-        return 'success';
-      case 'task':
-        return 'warning';
-      case 'result':
-        return 'info';
-      default:
-        return 'default';
-    }
+  // Fonction pour obtenir la couleur du chip en fonction du nom du canal
+  const getChannelChipColor = (channelName) => {
+    if (channelName.startsWith('auth/')) return 'secondary';
+    if (channelName.startsWith('tasks/')) return 'warning';
+    if (channelName.startsWith('coord/')) return 'info';
+    if (channelName.startsWith('volunteer/')) return 'success';
+    if (channelName.startsWith('manager/')) return 'primary';
+    return 'default';
   };
 
   return (
     <Box sx={{ p: { xs: 2, md: 4 }, background: '#f5f6fa', minHeight: '100vh' }}>
       {/* Header */}
       <Paper elevation={3} sx={{ p: 3, mb: 4, borderRadius: 3, background: 'linear-gradient(90deg, #1976d2 0%, #42a5f5 100%)', color: 'white' }}>
-        <Typography variant="h4" fontWeight={700} gutterBottom>
-          Communication Logs
-        </Typography>
-        <Typography variant="subtitle1">
-          Monitor real-time communication between managers and volunteers
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <SettingsInputAntennaIcon fontSize="large" />
+          <div>
+            <Typography variant="h4" fontWeight={700} gutterBottom>
+              Communication Channels
+            </Typography>
+            <Typography variant="subtitle1">
+              View all available communication channels in the system
+            </Typography>
+          </div>
+        </Box>
       </Paper>
 
-      {/* Tabs for different log views */}
-      <Paper elevation={1} sx={{ mb: 4, borderRadius: 2 }}>
-        <Tabs 
-          value={tabValue} 
-          onChange={handleTabChange} 
-          variant="fullWidth"
-          textColor="primary"
-          indicatorColor="primary"
-        >
-          <Tab icon={<SyncIcon />} label="Real-time Monitor" />
-          <Tab icon={<HistoryIcon />} label="Historical Logs" />
-          <Tab icon={<MessageIcon />} label="Message Archive" />
-        </Tabs>
-
-        <TabPanel value={tabValue} index={0}>
-          {/* Real-time Monitor Content */}
-          <Box sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Recent Communication Activity
-            </Typography>
-            
-            <TableContainer component={Paper} sx={{ mt: 2 }}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Type</TableCell>
-                    <TableCell>Title</TableCell>
-                    <TableCell>Content</TableCell>
-                    <TableCell>Timestamp</TableCell>
+      {/* Channels Content */}
+      <Paper elevation={1} sx={{ p: 3, borderRadius: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" fontWeight={600} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <SettingsInputAntennaIcon fontSize="small" />
+            Available Channels
+          </Typography>
+          <Button 
+            startIcon={<RefreshIcon />} 
+            variant="outlined" 
+            size="small"
+            onClick={fetchChannelsData}
+            disabled={loadingChannels}
+          >
+            Refresh
+          </Button>
+        </Box>
+        
+        {loadingChannels ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : errorChannels ? (
+          <Alert severity="error" sx={{ my: 2 }}>{errorChannels}</Alert>
+        ) : (
+          <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
+            <Table>
+              <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
+                <TableRow>
+                  <TableCell><strong>Channel</strong></TableCell>
+                  <TableCell><strong>Description</strong></TableCell>
+                  <TableCell><strong>Status</strong></TableCell>
+                  <TableCell><strong>Subscribers</strong></TableCell>
+                  <TableCell><strong>Created</strong></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {sampleChannels.map((channel) => (
+                  <TableRow key={channel.name} hover>
+                    <TableCell>
+                      <Chip 
+                        label={channel.name} 
+                        color={getChannelChipColor(channel.name)}
+                        size="small"
+                        sx={{ fontFamily: 'monospace', fontWeight: 500 }}
+                      />
+                    </TableCell>
+                    <TableCell>{channel.description}</TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={channel.active ? 'Active' : 'Inactive'} 
+                        color={channel.active ? 'success' : 'default'}
+                        size="small"
+                        variant="outlined"
+                      />
+                    </TableCell>
+                    <TableCell>{channel.subscribers}</TableCell>
+                    <TableCell>{formatTimestamp(channel.created_at)}</TableCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {recentMessages.map((message) => (
-                    <TableRow key={message.id}>
-                      <TableCell>
-                        <Chip 
-                          label={message.type.charAt(0).toUpperCase() + message.type.slice(1)} 
-                          color={getChipColor(message.type)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>{message.title}</TableCell>
-                      <TableCell>{message.content}</TableCell>
-                      <TableCell>{formatTimestamp(message.timestamp)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              Note: This is a static view. Real-time updates will be available in a future release.
-            </Typography>
-          </Box>
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={1}>
-          {/* Historical Logs Content */}
-          <Box sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Historical Communication Logs
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              This feature will display historical logs of all communications between managers and volunteers.
-              You'll be able to search, filter, and export logs for analysis.
-            </Typography>
-            <Typography variant="body2" color="primary" sx={{ mt: 2 }}>
-              Coming soon in the next update.
-            </Typography>
-          </Box>
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={2}>
-          {/* Message Archive Content */}
-          <Box sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Message Archive
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              This feature will allow you to browse and search through all messages exchanged in the system.
-              You'll be able to view message details, track conversations, and analyze communication patterns.
-            </Typography>
-            <Typography variant="body2" color="primary" sx={{ mt: 2 }}>
-              Coming soon in the next update.
-            </Typography>
-          </Box>
-        </TabPanel>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+        
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 3 }}>
+          These channels are used for communication between managers and volunteers in the Coordinator system.
+          Each channel has a specific purpose and is used for different types of messages.
+        </Typography>
+        
+        {channels.length === 0 && !loadingChannels && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Currently showing sample data. Click Refresh to fetch real channel data from the server.
+          </Alert>
+        )}
       </Paper>
     </Box>
   );

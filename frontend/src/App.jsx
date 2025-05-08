@@ -12,9 +12,10 @@ import Workflows from './components/Workflows';
 import Tasks from './components/Tasks';
 import Analytics from './components/Analytics';
 import Notifications from './components/Notifications';
-import Logs from './components/Logs';
+// import Logs from './components/Logs';
 import Settings from './components/Settings';
 import Help from './components/Help';
+
 
 
 
@@ -36,7 +37,7 @@ function App() {
       <Route path="/tasks" element={<Tasks />} />
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/notifications" element={<Notifications />} />
-      <Route path="/logs" element={<Logs />} />
+      {/* <Route path="/logs" element={<Logs />} /> */}
       <Route path="/settings" element={<Settings />} />
       <Route path="/help" element={<Help />} />
   </Routes>

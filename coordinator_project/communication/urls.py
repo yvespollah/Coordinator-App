@@ -1,16 +1,14 @@
 """
-Configuration des URLs pour le module de communication.
-Ce fichier définit les points d'entrée de l'API REST.
+URLs pour l'application de communication.
 """
 
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import path
+from . import views
 
-# Création d'un routeur vide pour éviter l'erreur
-router = DefaultRouter()
+app_name = 'communication'
 
-# Définir une liste vide de patterns d'URL
-urlpatterns = []
-
-# Ajouter les URLs du routeur
-urlpatterns += router.urls
+urlpatterns = [
+    # Ajoutez ici les URLs pour l'application de communication
+    # Par exemple:
+    # path('channels/', views.list_channels, name='list_channels'),
+]

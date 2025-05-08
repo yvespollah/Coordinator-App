@@ -17,7 +17,17 @@ from .serializers import (
 
 # Importer le broker pour la communication Redis
 from communication.broker import MessageBroker
-from communication.messages import ManagerRegistrationMessage
+from communication.messages import (
+    ManagerRegistrationMessage, 
+    ManagerRegistrationResponseMessage,
+    ManagerLoginMessage, 
+    ManagerLoginResponseMessage
+)
+
+# Importer les utilitaires d'authentification
+from .auth import generate_manager_token, verify_manager_token
+import uuid
+import json
 
 # Créer une instance du broker
 message_broker = MessageBroker()
@@ -39,7 +49,7 @@ class ManagerViewSet(viewsets.ViewSet):
             # Enregistrer dans MongoDB
             manager = serializer.save()
             
-            # Publier sur le canal Redis
+            # Publier sur Redis pour informer les volunteers
             message_data = {
                 'username': manager.username,
                 'email': manager.email,
@@ -550,3 +560,215 @@ class CommunicationStatsView(APIView):
             return Response({
                 "error": str(e)
             }, status=drf_status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# Vue pour l'enregistrement des managers via Redis
+class ManagerRedisRegistrationView(APIView):
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        """
+        Enregistre un nouveau manager via Redis.
+        Publie une demande d'enregistrement sur le canal auth/register
+        et attend la réponse sur auth/register_response.
+        
+        POST /api/auth/manager/register/
+        {
+            "username": "manager_username",
+            "email": "manager@example.com",
+            "password": "manager_password"
+        }
+        """
+        serializer = ManagerRegistrationSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+        
+        # Créer le message d'enregistrement
+        registration_message = ManagerRegistrationMessage(
+            username=serializer.validated_data['username'],
+            email=serializer.validated_data['email'],
+            password=serializer.validated_data['password'],
+            client_ip=request.META.get('REMOTE_ADDR', 'unknown')
+        )
+        
+        # Publier sur le canal d'enregistrement
+        message_broker.publish('auth/register', registration_message.to_dict())
+        
+        # Dans un cas réel, vous utiliseriez un système d'attente asynchrone
+        # comme asyncio ou Celery pour attendre la réponse
+        # Ici, nous simulons une réponse immédiate pour simplifier
+        
+        try:
+            # Enregistrer dans MongoDB
+            manager = serializer.save()
+            
+            # Créer la réponse
+            response_message = ManagerRegistrationResponseMessage(
+                request_id=registration_message.request_id,
+                status='success',
+                message='Manager registered successfully',
+                manager_id=str(manager.id),
+                username=manager.username,
+                email=manager.email
+            )
+            
+            # Publier la réponse
+            message_broker.publish('auth/register_response', response_message.to_dict())
+            
+            return Response({
+                'message': 'Manager registered successfully',
+                'manager_id': str(manager.id),
+                'username': manager.username,
+                'email': manager.email
+            }, status=201)
+            
+        except Exception as e:
+            # Créer la réponse d'erreur
+            response_message = ManagerRegistrationResponseMessage(
+                request_id=registration_message.request_id,
+                status='error',
+                message=str(e)
+            )
+            
+            # Publier la réponse d'erreur
+            message_broker.publish('auth/register_response', response_message.to_dict())
+            
+            return Response({
+                'error': str(e)
+            }, status=400)
+
+
+# Vue pour l'authentification Redis des managers
+class ManagerRedisAuthView(APIView):
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        """
+        Authentifie un manager via Redis.
+        Publie une demande d'authentification sur le canal auth/login
+        et attend la réponse sur auth/login_response.
+        
+        POST /api/auth/manager/login/
+        {
+            "username": "manager_username",
+            "password": "manager_password"
+        }
+        """
+        username = request.data.get('username')
+        password = request.data.get('password')
+        
+        if not username or not password:
+            return Response(
+                {'error': 'Username and password are required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Créer le message de connexion
+        login_message = ManagerLoginMessage(
+            username=username,
+            password=password,
+            client_ip=request.META.get('REMOTE_ADDR', 'unknown')
+        )
+        
+        # Publier sur le canal d'authentification
+        message_broker.publish('auth/login', login_message.to_dict())
+        
+        # Dans un cas réel, vous utiliseriez un système d'attente asynchrone
+        # comme asyncio ou Celery pour attendre la réponse
+        # Ici, nous simulons une réponse immédiate pour simplifier
+        
+        try:
+            # Vérifier les identifiants
+            manager = Manager.objects.get(username=username)
+            
+            # Vérifier le mot de passe
+            if manager.password != password:
+                # Créer la réponse d'erreur
+                response_message = ManagerLoginResponseMessage(
+                    request_id=login_message.request_id,
+                    status='error',
+                    message='Invalid credentials'
+                )
+                
+                # Publier la réponse d'erreur
+                message_broker.publish('auth/login_response', response_message.to_dict())
+                
+                return Response(
+                    {'error': 'Invalid credentials'}, 
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            
+            # Vérifier que le compte est actif
+            if manager.status != 'active':
+                # Créer la réponse d'erreur
+                response_message = ManagerLoginResponseMessage(
+                    request_id=login_message.request_id,
+                    status='error',
+                    message='Account is not active'
+                )
+                
+                # Publier la réponse d'erreur
+                message_broker.publish('auth/login_response', response_message.to_dict())
+                
+                return Response(
+                    {'error': 'Account is not active'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Générer un token JWT et un refresh token
+            token = generate_manager_token(str(manager.id))
+            refresh_token = generate_manager_token(str(manager.id), expiration_hours=168)  # 7 jours
+            
+            # Mettre à jour la date de dernière connexion
+            manager.last_login = datetime.utcnow()
+            manager.save()
+            
+            # Créer la réponse de succès
+            response_message = ManagerLoginResponseMessage(
+                request_id=login_message.request_id,
+                status='success',
+                message='Login successful',
+                token=token,
+                refresh_token=refresh_token,
+                manager_id=str(manager.id),
+                username=manager.username,
+                email=manager.email
+            )
+            
+            # Publier la réponse de succès
+            message_broker.publish('auth/login_response', response_message.to_dict())
+            
+            # Publier un message sur le canal de statut
+            message_broker.publish('manager/status', {
+                'id': str(manager.id),
+                'username': manager.username,
+                'status': 'online',
+                'timestamp': datetime.utcnow().isoformat(),
+                'token': token  # Le token sera retiré par le proxy
+            })
+            
+            return Response({
+                'token': token,
+                'refresh_token': refresh_token,
+                'user_id': str(manager.id),
+                'username': manager.username,
+                'email': manager.email,
+                'status': manager.status,
+                'role': 'manager'
+            })
+            
+        except Manager.DoesNotExist:
+            # Créer la réponse d'erreur
+            response_message = ManagerLoginResponseMessage(
+                request_id=login_message.request_id,
+                status='error',
+                message='Invalid credentials'
+            )
+            
+            # Publier la réponse d'erreur
+            message_broker.publish('auth/login_response', response_message.to_dict())
+            
+            return Response(
+                {'error': 'Invalid credentials'}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
