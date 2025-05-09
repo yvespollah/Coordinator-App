@@ -112,8 +112,6 @@ const Home = () => {
       }
     );
     
-
-
     // Analytics (Charts)
     setLoadingCharts(true);
     Promise.all([
@@ -125,9 +123,6 @@ const Home = () => {
       setLoadingCharts(false);
     });
   }, []);
-  console.log('workflowStatusData:', workflowStatusData);
-  console.log('volunteerStatusData:', volunteerStatusData);
-
 
   return (
     <Box sx={{ p: { xs: 2, md: 4 }, background: '#f5f6fa', minHeight: '100vh' }}>
@@ -141,6 +136,7 @@ const Home = () => {
         </Typography>
       </Paper>
 
+      {/* Dashboard Content */}
       {/* Quick Stats Section */}
       <Grid container spacing={3} justifyContent="center" mb={4}>
         {loadingStats ? (
@@ -167,7 +163,6 @@ const Home = () => {
         )}
       </Grid>
       
-
       {/* Running Workflows Widget */}
       <Paper elevation={1} sx={{ p: 3, mb: 4, borderRadius: 2, background: '#fffbea' }}>
         <Stack direction="row" alignItems="center" spacing={1} mb={2}>
@@ -198,44 +193,80 @@ const Home = () => {
           <Button variant="contained" component={Link} to="/manager" color="primary">View Managers</Button>
           <Button variant="contained" component={Link} to="/volunteer" color="success">View Volunteers</Button>
           <Button variant="contained" component={Link} to="/workflows" color="info">View Workflows</Button>
+          <Button variant="contained" component={Link} to="/logs" color="secondary">Communication Logs</Button>
         </Stack>
       </Paper>
 
-      {/* System Health Widget */}
-      <Paper elevation={1} sx={{ p: 3, mb: 4, borderRadius: 2, background: '#e8f5e9' }}>
+      {/* System Health */}
+      <Paper elevation={1} sx={{ p: 3, mb: 4, borderRadius: 2 }}>
         <Stack direction="row" alignItems="center" spacing={1} mb={2}>
-          <HealthAndSafetyIcon color={systemHealth?.status === 'ok' ? 'success' : 'warning'} />
+          <HealthAndSafetyIcon color={loadingHealth ? 'disabled' : systemHealth?.status === 'ok' ? 'success' : 'warning'} />
           <Typography variant="h6" fontWeight={600}>System Health</Typography>
         </Stack>
         {loadingHealth ? <CircularProgress size={20} /> : errorHealth ? (
           <Typography variant="body2" color="error">{errorHealth}</Typography>
-        ) : systemHealth ? (
-          <>
-            <Typography variant="body2" color={systemHealth.status === 'ok' ? 'success.main' : 'warning.main'} fontWeight={600}>
-              {systemHealth.status === 'ok' ? 'All systems operational.' : 'Some issues detected!'}
-            </Typography>
-            <ul style={{margin:0, paddingLeft:20}}>
-              <li>Database: {systemHealth.details.database}</li>
-              <li>Active Volunteers: {systemHealth.details.active_volunteers}</li>
-              <li>Recent Errors: {systemHealth.details.recent_errors}</li>
-            </ul>
-          </>
-        ) : null}
+        ) : (
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper elevation={0} sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 2 }}>
+                <Typography variant="body2" color="text.secondary">Database</Typography>
+                <Typography variant="body1" fontWeight={500} color={systemHealth?.details?.database === 'connected' ? 'success.main' : 'error.main'}>
+                  {systemHealth?.details?.database || 'Unknown'}
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper elevation={0} sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 2 }}>
+                <Typography variant="body2" color="text.secondary">Active Volunteers</Typography>
+                <Typography variant="body1" fontWeight={500}>
+                  {systemHealth?.details?.active_volunteers || 0}
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper elevation={0} sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 2 }}>
+                <Typography variant="body2" color="text.secondary">Recent Errors</Typography>
+                <Typography variant="body1" fontWeight={500} color={systemHealth?.details?.recent_errors > 0 ? 'error.main' : 'text.primary'}>
+                  {systemHealth?.details?.recent_errors || 0}
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Paper elevation={0} sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 2 }}>
+                <Typography variant="body2" color="text.secondary">Overall Status</Typography>
+                <Typography variant="body1" fontWeight={500} color={systemHealth?.status === 'ok' ? 'success.main' : 'warning.main'}>
+                  {systemHealth?.status || 'Unknown'}
+                </Typography>
+              </Paper>
+            </Grid>
+          </Grid>
+        )}
       </Paper>
 
-      {/* Analytics Charts Section */}
+      {/* Analytics Section */}
       <Grid container spacing={3} mb={4}>
+        {/* Workflow Status Chart */}
         <Grid item xs={12} md={6}>
-          <Paper elevation={1} sx={{ p: 3, borderRadius: 2, height: 340 }}>
-            <Typography variant="h6" fontWeight={600} mb={2}>Workflows by Status</Typography>
-            {loadingCharts ? <CircularProgress size={20} /> : (
-              <ResponsiveContainer width="100%" height={250}>
+          <Paper elevation={1} sx={{ p: 3, borderRadius: 2, height: '100%' }}>
+            <Typography variant="h6" fontWeight={600} mb={2}>Workflow Status Distribution</Typography>
+            {loadingCharts ? <CircularProgress size={20} /> : workflowStatusData.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">No workflow data available.</Typography>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                  <Pie data={workflowStatusData} dataKey="count" nameKey="status" cx="50%" cy="50%" outerRadius={80} fill="#1976d2" label>
-                    
-                    {workflowStatusData.map((entry, idx) => (
-                      <Cell key={`cell-wf-${entry.status}`} fill={STATUS_COLORS[entry.status] || '#90caf9'} />
-                      
+                  <Pie
+                    data={workflowStatusData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                    nameKey="name"
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {workflowStatusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name] || `#${Math.floor(Math.random()*16777215).toString(16)}`} />
                     ))}
                   </Pie>
                   <Legend />
@@ -245,60 +276,40 @@ const Home = () => {
             )}
           </Paper>
         </Grid>
-        
+
+        {/* Volunteer Status Chart */}
         <Grid item xs={12} md={6}>
-          <Paper elevation={1} sx={{ p: 3, borderRadius: 2, height: 340 }}>
-            <Typography variant="h6" fontWeight={600} mb={2}>Volunteers by Status</Typography>
-            {loadingCharts ? <CircularProgress size={20} /> : (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={volunteerStatusData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+          <Paper elevation={1} sx={{ p: 3, borderRadius: 2, height: '100%' }}>
+            <Typography variant="h6" fontWeight={600} mb={2}>Volunteer Status Distribution</Typography>
+            {loadingCharts ? <CircularProgress size={20} /> : volunteerStatusData.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">No volunteer data available.</Typography>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart
+                  data={volunteerStatusData}
+                  margin={{
+                    top: 5,
+                    right: 30,
+                    left: 20,
+                    bottom: 5,
+                  }}
+                >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="current_status" />
-                  <YAxis allowDecimals={false} />
-                  <Bar dataKey="count">
-                    {volunteerStatusData.map((entry, idx) => (
-                      <Cell key={`cell-vol-${entry.current_status}`} fill={STATUS_COLORS[entry.current_status] || '#bdbdbd'} />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <RechartsTooltip />
+                  <Legend />
+                  <Bar dataKey="value" name="Count" fill="#8884d8">
+                    {volunteerStatusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name] || `#${Math.floor(Math.random()*16777215).toString(16)}`} />
                     ))}
                   </Bar>
-                  <Legend />
-                  <RechartsTooltip />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </Paper>
         </Grid>
       </Grid>
-      
-
-      {/* Active Volunteers Widget */}
-      <Paper elevation={1} sx={{ p: 3, borderRadius: 2 }}>
-        <Typography variant="h6" fontWeight={600} mb={2}>Active Volunteers</Typography>
-        <Divider sx={{ mb: 2 }} />
-        {loadingVolunteers ? <CircularProgress size={20} /> : errorVolunteers ? (
-          <Typography variant="body2" color="error">{errorVolunteers}</Typography>
-        ) : activeVolunteers.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">No active volunteers at the moment.</Typography>
-        ) : (
-          <Stack spacing={1}>
-            {activeVolunteers.map((v, idx) => (
-              <Tooltip title={v.email || ''} key={idx} placement="top">
-                <Typography variant="body2">{v.name || v.username || JSON.stringify(v)}</Typography>
-              </Tooltip>
-            ))}
-          </Stack>
-        )}
-      </Paper>
-
-      {/* Help/Documentation Widget */}
-      <Paper elevation={1} sx={{ p: 3, borderRadius: 2, mt: 4, background: '#e3f2fd' }}>
-        <Stack direction="row" alignItems="center" spacing={1} mb={2}>
-          <HelpOutlineIcon color="info" />
-          <Typography variant="h6" fontWeight={600}>Need Help?</Typography>
-        </Stack>
-        <Typography variant="body2" color="text.secondary">
-          Visit the <a href="/help" style={{ color: '#1976d2', textDecoration: 'underline' }}>Help Center</a> or contact support for assistance.
-        </Typography>
-      </Paper>
     </Box>
   );
 };

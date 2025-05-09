@@ -18,6 +18,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import ForumIcon from '@mui/icons-material/Forum';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import SettingsInputAntennaIcon from '@mui/icons-material/SettingsInputAntenna';
 import {Link, useLocation} from 'react-router-dom' // for links
 import { useState } from 'react';
 
@@ -26,6 +27,7 @@ export default function Menu() {
   const [openManager, setOpenManager] = useState(false);
   const [openVolunteer, setOpenVolunteer] = useState(false);
   const [openWorkflows, setOpenWorkflows] = useState(false);
+  const [openCommunication, setOpenCommunication] = useState(false);
 
   const handleManagerClick = () => {
     setOpenManager(!openManager);
@@ -37,6 +39,10 @@ export default function Menu() {
 
   const handleWorkflowsClick = () => {
     setOpenWorkflows(!openWorkflows);
+  };
+  
+  const handleCommunicationClick = () => {
+    setOpenCommunication(!openCommunication);
   };
 
   const location = useLocation()
@@ -140,12 +146,29 @@ export default function Menu() {
     </ListItemButton>
 
     {/* Communication/Logs */}
-    <ListItemButton component={Link} to="/logs" selected={path === "/logs"}>
+    <ListItemButton onClick={handleCommunicationClick}>
         <ListItemIcon>
             <ForumIcon />
         </ListItemIcon>
-        <ListItemText primary="Communication/Logs" />
+        <ListItemText primary="Communication" />
+        {openCommunication ? <ExpandLess /> : <ExpandMore />}
     </ListItemButton>
+    <Collapse in={openCommunication} timeout="auto" unmountOnExit>
+        <List component="div" disablePadding>
+            <ListItemButton sx={{ pl: 4 }} component={Link} to="/logs" selected={path === "/logs"}>
+                <ListItemIcon>
+                    <ForumIcon />
+                </ListItemIcon>
+                <ListItemText primary="Logs" />
+            </ListItemButton>
+            <ListItemButton sx={{ pl: 4 }} component={Link} to="/channel-monitor" selected={path === "/channel-monitor"}>
+                <ListItemIcon>
+                    <SettingsInputAntennaIcon />
+                </ListItemIcon>
+                <ListItemText primary="Channel Monitor" />
+            </ListItemButton>
+        </List>
+    </Collapse>
 
     {/* Settings */}
     <ListItemButton component={Link} to="/settings" selected={path === "/settings"}>

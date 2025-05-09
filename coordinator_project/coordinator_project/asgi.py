@@ -18,12 +18,14 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'coordinator_project.settings')
 django.setup()
 
 import volunteer.routing
+import communication.routing
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
     "websocket": AuthMiddlewareStack(
         URLRouter(
-            volunteer.routing.websocket_urlpatterns
+            volunteer.routing.websocket_urlpatterns +
+            communication.routing.websocket_urlpatterns
         )
     ),
 })

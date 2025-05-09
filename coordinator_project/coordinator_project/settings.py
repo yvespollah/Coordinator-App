@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'channels',
     'volunteer',
-    'manager'
+    'manager',
+    'communication'
 ]
 
 MIDDLEWARE = [
@@ -57,6 +58,32 @@ MIDDLEWARE = [
 
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+]
+
+# Allow all methods (GET, POST, etc.) for CORS requests
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Allow all headers in requests
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
 
 ROOT_URLCONF = 'coordinator_project.urls'
@@ -84,12 +111,12 @@ ASGI_APPLICATION = 'coordinator_project.asgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-""" DATABASES = {
+DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
-} """
+}
 
 
 # Password validation
@@ -133,14 +160,39 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Redis settings for consumers.py
+REDIS_HOST = '127.0.0.1'
+REDIS_PORT = 6379
+REDIS_DB = 0
+
+# Redis proxy settings
+REDIS_PROXY_HOST = '127.0.0.1'
+REDIS_PROXY_PORT = 6380
+REDIS_PROXY_DB = 0
+USE_REDIS_PROXY = True  # Utiliser le proxy Redis au lieu de Redis directement
+
 # Redis for channel layers (message broker)
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [('127.0.0.1', 6379)],
+            "hosts": [(REDIS_PROXY_HOST if USE_REDIS_PROXY else REDIS_HOST, REDIS_PROXY_PORT if USE_REDIS_PROXY else REDIS_PORT)],
         },
     },
 }
 
+# CORS settings
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+
+# MongoDB settings
+MONGODB_HOST = 'localhost'
+MONGODB_PORT = 27017
+MONGODB_NAME = 'coordinator_db'
+
+import mongoengine
+mongoengine.connect(
+    db=MONGODB_NAME,
+    host=MONGODB_HOST,
+    port=MONGODB_PORT
+)

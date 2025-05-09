@@ -23,11 +23,11 @@ const Volunteer = () =>{
     const GetData = () =>{
         AxiosInstance.get(`api/volunteers/`).then((res) =>{
             setMyData(res.data)
-        } )
+        }).catch(error => {
+            console.error("Error fetching volunteers:", error);
+        });
     }
-    console.log("---------------------")
-    console.log(myData)
-    console.log("---------------------")
+    
     useEffect(() =>{
         GetData()
     },[])
@@ -67,6 +67,9 @@ const Volunteer = () =>{
         setDeleteId(id);
         if(window.confirm('Are you sure you want to delete this volunteer?')){
             AxiosInstance.delete(`api/volunteers/${id}/`).then(() => GetData())
+                .catch(error => {
+                    console.error("Error deleting volunteer:", error);
+                });
         }
     };
 
