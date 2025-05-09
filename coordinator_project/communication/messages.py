@@ -64,6 +64,7 @@ class ManagerRegistrationResponseMessage(BaseMessage):
                 username: Optional[str] = None,
                 email: Optional[str] = None,
                 request_id: Optional[str] = None):
+        
         super().__init__()
         # Si request_id est fourni, on l'utilise au lieu de générer un nouveau
         if request_id:
@@ -73,6 +74,7 @@ class ManagerRegistrationResponseMessage(BaseMessage):
         self.manager_id = manager_id
         self.username = username
         self.email = email
+        print("------init message----------")
     
     def to_dict(self) -> Dict[str, Any]:
         """Convertit le message en dictionnaire."""

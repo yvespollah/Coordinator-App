@@ -14,6 +14,7 @@ import jwt
 from django.conf import settings
 from .models import Channel
 from .broker import MessageBroker
+import redis
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -152,6 +153,12 @@ class RedisProxy:
         self.running = True
         logger.info(f"Proxy Redis démarré sur le port {self.proxy_port}")
         
+        # Démarrer un thread pour écouter les messages publiés sur Redis
+        # et les transmettre aux clients abonnés
+        self.pubsub_thread = threading.Thread(target=self._listen_for_published_messages)
+        self.pubsub_thread.daemon = True
+        self.pubsub_thread.start()
+        
         try:
             while self.running:
                 client_socket, client_address = self.server_socket.accept()
@@ -210,7 +217,6 @@ class RedisProxy:
                     logger.debug(f"Pas de donnees recues")
                     break
                 
-
                 # Analyser la commande Redis
                 command = RedisCommand(data)
                 logger.debug(f"Commande reçue: {command}")
@@ -220,7 +226,7 @@ class RedisProxy:
                     if self.handle_pubsub_command(client_id, command, client_socket, redis_socket, data):
                         continue  # Commande déjà traitée
                 else:
-                    logger.info(f"Le message n'est pas pub/sub: {command.command_type}")
+                    logger.info(f"Le message n'est pas pub/sub: {command.command_type},{client_id}")
                 
                 # Pour les autres commandes, les transmettre directement
                 redis_socket.send(data)
@@ -251,6 +257,7 @@ class RedisProxy:
     
     def handle_pubsub_command(self, client_id, command, client_socket, redis_socket, raw_data):
         """Gère les commandes pub/sub"""
+        
         if command.command_type == 'PUBLISH':
             return self.handle_publish(client_id, command, client_socket, redis_socket, raw_data)
         elif command.command_type in ['SUBSCRIBE', 'PSUBSCRIBE']:
@@ -460,6 +467,61 @@ class RedisProxy:
             message['password'] = '********'
         
         return message
+
+    def _listen_for_published_messages(self):
+        """Écoute les messages publiés sur Redis et les transmet aux clients abonnés"""
+        try:
+            # Utiliser redis-py pour s'abonner aux canaux
+            redis_client = redis.Redis(host=self.redis_host, port=self.redis_port, decode_responses=True)
+            pubsub = redis_client.pubsub()
+            
+            # S'abonner à tous les canaux connus
+            all_channels = list(self.open_channels.keys()) + list(self.manager_channels.keys()) + list(self.volunteer_channels.keys())
+            # Filtrer les canaux avec des jokers (#)
+            channels_to_subscribe = [channel for channel in all_channels if '#' not in channel]
+            
+            if channels_to_subscribe:
+                logger.info(f"Proxy s'abonne aux canaux: {', '.join(channels_to_subscribe)}")
+                pubsub.subscribe(*channels_to_subscribe)
+            
+            # Boucle d'écoute des messages
+            for message in pubsub.listen():
+                if message['type'] == 'message':
+                    channel = message['channel']
+                    data = message['data']
+                    
+                    logger.info(f"Message reçu sur {channel} à transmettre aux clients abonnés")
+                    
+                    # Convertir le message au format RESP pour le transmettre aux clients
+                    resp_message = self._format_pubsub_message(channel, data)
+                    
+                    # Transmettre le message aux clients abonnés
+                    for client_id, client_info in list(self.client_connections.items()):
+                        if channel in client_info.get('subscribed_channels', set()):
+                            try:
+                                client_socket = client_info['socket']
+                                client_socket.send(resp_message)
+                                logger.debug(f"Message transmis au client {client_id}")
+                            except Exception as e:
+                                logger.error(f"Erreur lors de la transmission au client {client_id}: {e}")
+        
+        except Exception as e:
+            logger.error(f"Erreur dans le thread d'écoute des messages publiés: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def _format_pubsub_message(self, channel, data):
+        """Formate un message pub/sub au format RESP"""
+        # Format: *3\r\n$7\r\nmessage\r\n$<len(channel)>\r\n<channel>\r\n$<len(data)>\r\n<data>\r\n
+        channel_bytes = channel.encode('utf-8')
+        data_bytes = data.encode('utf-8') if isinstance(data, str) else data
+        
+        resp_message = (
+            f"*3\r\n$7\r\nmessage\r\n${len(channel_bytes)}\r\n{channel}\r\n"
+            f"${len(data_bytes)}\r\n{data}\r\n"
+        ).encode('utf-8')
+        
+        return resp_message
 
 
 # Fonction pour démarrer le proxy en tant que service

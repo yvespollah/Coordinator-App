@@ -9,6 +9,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 import logging
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -30,26 +31,43 @@ class Channel:
     active: bool = True
     subscribers: int = 0
 
+
 class MessageBroker:
     """
     Broker central pour la communication pub/sub via Redis.
     Gère les canaux de communication et le routage des messages.
     """
     
-    def __init__(self, host='localhost', port=6379, db=0):
+    def __init__(self, host=None, port=None, db=None):
         """
         Initialise la connexion Redis et configure les canaux par défaut.
         
         Args:
-            host: Hôte Redis (défaut: localhost)
-            port: Port Redis (défaut: 6379)
-            db: Base de données Redis (défaut: 0)
+            host: Hôte Redis (défaut: settings.REDIS_HOST ou localhost)
+            port: Port Redis (défaut: settings.REDIS_PORT ou 6379)
+            db: Base de données Redis (défaut: settings.REDIS_DB ou 0)
         """
+        # Utiliser les paramètres fournis ou les valeurs par défaut des settings
+        self.use_proxy = getattr(settings, 'USE_REDIS_PROXY', False)
+        
+        if self.use_proxy:
+            # Utiliser le proxy Redis
+            self.redis_host = host or getattr(settings, 'REDIS_PROXY_HOST', 'localhost')
+            self.redis_port = port or getattr(settings, 'REDIS_PROXY_PORT', 6380)
+            self.redis_db = db or getattr(settings, 'REDIS_PROXY_DB', 0)
+            logger.info(f"MessageBroker utilise le proxy Redis: {self.redis_host}:{self.redis_port}")
+        else:
+            # Utiliser Redis directement
+            self.redis_host = host or getattr(settings, 'REDIS_HOST', 'localhost')
+            self.redis_port = port or getattr(settings, 'REDIS_PORT', 6379)
+            self.redis_db = db or getattr(settings, 'REDIS_DB', 0)
+            logger.info(f"MessageBroker utilise Redis directement: {self.redis_host}:{self.redis_port}")
+        
         # Connexion Redis
         self.redis_client = redis.Redis(
-            host=host, 
-            port=port, 
-            db=db,
+            host=self.redis_host, 
+            port=self.redis_port, 
+            db=self.redis_db,
             decode_responses=True  # Décode automatiquement les réponses en UTF-8
         )
         self.pubsub = self.redis_client.pubsub()
@@ -61,7 +79,7 @@ class MessageBroker:
         self._initialize_default_channels()
         
         logger.info("MessageBroker initialisé avec succès")
-
+    
     def _initialize_default_channels(self):
         """Configure les canaux par défaut du système."""
         default_channels = [

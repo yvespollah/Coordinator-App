@@ -165,12 +165,18 @@ REDIS_HOST = '127.0.0.1'
 REDIS_PORT = 6379
 REDIS_DB = 0
 
+# Redis proxy settings
+REDIS_PROXY_HOST = '127.0.0.1'
+REDIS_PROXY_PORT = 6380
+REDIS_PROXY_DB = 0
+USE_REDIS_PROXY = True  # Utiliser le proxy Redis au lieu de Redis directement
+
 # Redis for channel layers (message broker)
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [(REDIS_HOST, REDIS_PORT)],
+            "hosts": [(REDIS_PROXY_HOST if USE_REDIS_PROXY else REDIS_HOST, REDIS_PROXY_PORT if USE_REDIS_PROXY else REDIS_PORT)],
         },
     },
 }

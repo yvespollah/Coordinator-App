@@ -124,39 +124,69 @@ class ManagerRegistrationConsumer(RedisConsumer):
         Args:
             data: Données du message
         """
+        print("Début du traitement d'enregistrement")
         request_id = data.get('request_id')
         username = data.get('username')
         email = data.get('email')
         password = data.get('password')
         
+        print(f"Données reçues: request_id={request_id}, username={username}, email={email}, password={'*' * len(password) if password else None}")
+        
         if not request_id or not username or not email or not password:
             logger.error(f"Données d'enregistrement incomplètes: {data}")
             
-            # Envoyer une réponse d'erreur
-            response = ManagerRegistrationResponseMessage(
-                request_id=request_id or '',
-                status='error',
-                message="Données d'enregistrement incomplètes"
-            )
-            
-            self.broker.publish('auth/register_response', response.to_dict())
-            return
+            try:
+                # Envoyer une réponse d'erreur
+                print("Création de la réponse d'erreur pour données incomplètes")
+                response = ManagerRegistrationResponseMessage(
+                    status='error',
+                    message="Données d'enregistrement incomplètes",
+                    request_id=request_id or ''
+                )
+                
+                print(f"Réponse créée: {response.to_dict()}")
+                
+                # Publication de la réponse
+                print(f"Publication sur le canal auth/register_response")
+                self.broker.publish('auth/register_response', response.to_dict())
+                print("Publication terminée")
+                return
+            except Exception as e:
+                logger.error(f"Erreur lors de la création/publication de la réponse: {e}")
+                import traceback
+                traceback.print_exc()
+                return
         
         try:
             # Vérifier si le manager existe déjà
+            print("Vérification si le manager existe déjà")
             existing_manager = Manager.objects(username=username).first()
+            print(f"Résultat de la recherche par username: {existing_manager}")
+            
             if existing_manager:
                 logger.warning(f"Le manager {username} existe déjà")
+                print(f"Le manager {username} existe déjà - création de la réponse")
                 
-                # Envoyer une réponse d'erreur
-                response = ManagerRegistrationResponseMessage(
-                    request_id=request_id,
-                    status='error',
-                    message='Ce nom d\'utilisateur est déjà utilisé'
-                )
-                
-                self.broker.publish('auth/register_response', response.to_dict())
-                return
+                try:
+                    # Envoyer une réponse d'erreur
+                    response = ManagerRegistrationResponseMessage(
+                        request_id=request_id,
+                        status='error',
+                        message='Ce nom d\'utilisateur est déjà utilisé'
+                    )
+                    
+                    print(f"Réponse créée: {response.to_dict()}")
+                    
+                    # Publication de la réponse
+                    print(f"Publication sur le canal auth/register_response")
+                    self.broker.publish('auth/register_response', response.to_dict())
+                    print("Publication terminée")
+                    return
+                except Exception as e:
+                    logger.error(f"Erreur lors de la création/publication de la réponse: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    return
             
             existing_email = Manager.objects(email=email).first()
             if existing_email:
