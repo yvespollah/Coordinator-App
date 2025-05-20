@@ -465,7 +465,7 @@ class RedisProxy:
         # Pour le canal d'enregistrement, on conserve le mot de passe (nécessaire pour créer le compte)
         if channel == 'auth/register':
             # Garder les informations nécessaires à l'enregistrement
-            safe_keys = ['username', 'email', 'password', 'request_id', 'client_ip', 'client_info']
+            safe_keys = ['username', 'email', 'password', 'request_id', 'client_ip', 'client_info', 'status']
             return {k: v for k, v in message.items() if k in safe_keys or k.startswith('_')}
         
         # Pour les autres canaux, masquer les mots de passe

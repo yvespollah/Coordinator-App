@@ -129,17 +129,18 @@ class ManagerRegistrationConsumer(RedisConsumer):
         username = data.get('username')
         email = data.get('email')
         password = data.get('password')
+        status = data.get('status')
         
-        print(f"Données reçues: request_id={request_id}, username={username}, email={email}, password={'*' * len(password) if password else None}")
+        print(f"Données reçues: request_id={request_id}, username={username}, email={email}, password={'*' * len(password) if password else None}, status={status}")
         
-        if not request_id or not username or not email or not password:
+        if not request_id or not username or not email or not password or not status:
             logger.error(f"Données d'enregistrement incomplètes: {data}")
             
             try:
                 # Envoyer une réponse d'erreur
                 print("Création de la réponse d'erreur pour données incomplètes")
                 response = ManagerRegistrationResponseMessage(
-                    status='error',
+                    status='error',   
                     message="Données d'enregistrement incomplètes",
                     request_id=request_id or ''
                 )
@@ -212,7 +213,7 @@ class ManagerRegistrationConsumer(RedisConsumer):
                 username=username,
                 email=email,
                 password=hashed_password,  # Stockage sécurisé du mot de passe
-                status='active'  # Activer directement le compte pour simplifier
+                status=status  # Activer directement le compte pour simplifier
             )
             manager.save()
             
