@@ -1,6 +1,6 @@
 from mongoengine import Document, StringField, DateTimeField, UUIDField, BooleanField, FloatField, DictField, ListField, IntField, ReferenceField, EmbeddedDocument, EmbeddedDocumentField
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from mongoengine import CASCADE, NULLIFY
 from volunteer.models import Volunteer
 
@@ -11,11 +11,13 @@ STATUS_SUSPENDED = 'suspended'
 
 class Manager(Document):
     id = UUIDField(primary_key=True, default=uuid.uuid4)
-    username = StringField(max_length=150, unique=True, required=True)
+    username = StringField(max_length=150, required=True)
+    first_name = StringField(max_length=150)
+    last_name = StringField(max_length=150)
     email = StringField(unique=True, required=True)
     password = StringField(max_length=256, required=True)
-    registration_date = DateTimeField(default=datetime.utcnow)
-    last_login = DateTimeField(default=datetime.utcnow)
+    registration_date = DateTimeField(default=datetime.now(timezone.utc))
+    last_login = DateTimeField(default=datetime.now(timezone.utc))
     status = StringField(choices=[STATUS_ACTIVE, STATUS_INACTIVE, STATUS_SUSPENDED], default=STATUS_INACTIVE)
 
     def __str__(self):
@@ -23,16 +25,17 @@ class Manager(Document):
 
 # --- Enums sous forme de constantes (MongoEngine ne gère pas TextChoices) ---
 WORKFLOW_TYPE_CHOICES = (
-    ('DATA_PROCESSING', 'Traitement de données'),
-    ('SCIENTIFIC_COMPUTING', 'Calcul scientifique'),
-    ('RENDERING', 'Rendu graphique'),
-    ('MACHINE_LEARNING', 'Apprentissage automatique'),
+    ('MATRIX_ADDITION', 'Addition de matrices de grande taille'),
+    ('MATRIX_MULTIPLICATION', 'Multiplication de matrices de grande taille'),
+    ('ML_TRAINING', 'Entraînement de modèle machine learning'),
+    ('ML_INFERENCE', 'Inférence de modèle machine learning'),
+    ('CUSTOM', 'Workflow personnalisé'),
 )
 
 WORKFLOW_STATUS_CHOICES = (
     ('CREATED', 'Créé'),
     ('VALIDATED', 'Validé'),
-    ('SUBMITTED', 'Soumis'),
+    #('SUBMITTED', 'Soumis'),
     ('SPLITTING', 'En découpage'),
     ('ASSIGNING', 'En attribution'),
     ('PENDING', 'En attente'),
@@ -71,8 +74,8 @@ class Workflow(Document):
         choices=WORKFLOW_STATUS_CHOICES,
         default='CREATED'
     )
-    created_at = DateTimeField(default=datetime.utcnow)
-    updated_at = DateTimeField(default=datetime.utcnow)
+    created_at = DateTimeField(default=datetime.now(timezone.utc))
+    updated_at = DateTimeField(default=datetime.now(timezone.utc))
     priority = IntField(default=1)
 
     estimated_resources = DictField(default=dict)
@@ -101,7 +104,7 @@ class Task(Document):
     status = StringField(max_length=20, choices=TASK_STATUS_CHOICES, default='PENDING')
     is_subtask = BooleanField(default=False)
     progress = FloatField(default=0)
-    created_at = DateTimeField(default=datetime.utcnow)
+    created_at = DateTimeField(default=datetime.now(timezone.utc))
     start_time = DateTimeField(null=True)
     end_time = DateTimeField(null=True)
     required_resources = DictField(default=dict)

@@ -16,14 +16,14 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             '--redis-host',
-            default=getattr(settings, 'REDIS_HOST', 'localhost'),
-            help='Hôte Redis (défaut: settings.REDIS_HOST ou localhost)'
+            default=getattr(settings, 'REDIS_HOST_FOR_PROXY', '0.0.0.0'),
+            help='Hôte Redis (défaut: settings.REDIS_HOST_FOR_PROXY ou localhost)'
         )
         parser.add_argument(
             '--redis-port',
             type=int,
-            default=getattr(settings, 'REDIS_PORT', 6379),
-            help='Port Redis (défaut: settings.REDIS_PORT ou 6379)'
+            default=getattr(settings, 'REDIS_PORT_FOR_PROXY', 6379),
+            help='Port Redis (défaut: settings.REDIS_PORT_FOR_PROXY ou 6379)'
         )
         parser.add_argument(
             '--proxy-port',

@@ -1,3 +1,4 @@
+
 """
 Django settings for coordinator_project project.
 
@@ -42,7 +43,8 @@ INSTALLED_APPS = [
     'channels',
     'volunteer',
     'manager',
-    'communication'
+    'communication',
+    'redis_communication.apps.RedisCommunicationConfig'
 ]
 
 MIDDLEWARE = [
@@ -162,14 +164,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Redis settings for consumers.py
 REDIS_HOST = '127.0.0.1'
-REDIS_PORT = 6379
+REDIS_PORT = 6380
 REDIS_DB = 0
 
 # Redis proxy settings
 REDIS_PROXY_HOST = '127.0.0.1'
+REDIS_PORT_FOR_PROXY = 6379
 REDIS_PROXY_PORT = 6380
 REDIS_PROXY_DB = 0
-USE_REDIS_PROXY = True  # Utiliser le proxy Redis au lieu de Redis directement
+USE_REDIS_PROXY = True  
 
 # Redis for channel layers (message broker)
 CHANNEL_LAYERS = {
@@ -186,13 +189,42 @@ CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 # MongoDB settings
+# Configuration des paramètres de base
 MONGODB_HOST = 'localhost'
 MONGODB_PORT = 27017
 MONGODB_NAME = 'coordinator_db'
+MONGODB_USERNAME = ''
+MONGODB_PASSWORD = ''
 
+# Construction de la chaîne de connexion URI
+# Format: mongodb://[username:password@]host[:port]/database
+if MONGODB_USERNAME and MONGODB_PASSWORD:
+    MONGODB_URI = f"mongodb://{MONGODB_USERNAME}:{MONGODB_PASSWORD}@{MONGODB_HOST}:{MONGODB_PORT}/{MONGODB_NAME}"
+else:
+    MONGODB_URI = f"mongodb://{MONGODB_HOST}:{MONGODB_PORT}/{MONGODB_NAME}"
+
+# Options de connexion pour améliorer la fiabilité
+MONGODB_CONNECT_OPTIONS = {
+    'connectTimeoutMS': 5000,  # 5 secondes de timeout pour la connexion
+    'socketTimeoutMS': 30000,  # 30 secondes de timeout pour les opérations
+    'serverSelectionTimeoutMS': 5000,  # 5 secondes pour la sélection du serveur
+    'maxPoolSize': 10,  # Nombre maximum de connexions dans le pool
+    'minPoolSize': 1,  # Nombre minimum de connexions dans le pool
+    'maxIdleTimeMS': 30000,  # Temps maximum d'inactivité d'une connexion
+    'retryWrites': True,  # Réessayer les opérations d'écriture en cas d'échec
+    'w': 'majority',  # Attendre la confirmation d'écriture de la majorité des réplicas
+}
+
+# Connexion à MongoDB avec mongoengine
 import mongoengine
-mongoengine.connect(
-    db=MONGODB_NAME,
-    host=MONGODB_HOST,
-    port=MONGODB_PORT
-)
+try:
+    # Utilisation de la chaîne de connexion URI avec les options
+    mongoengine.connect(
+        host=MONGODB_URI,
+        **MONGODB_CONNECT_OPTIONS
+    )
+    print(f"Connexion à MongoDB établie avec succès: {MONGODB_URI}")
+except Exception as e:
+    print(f"Erreur de connexion à MongoDB: {e}")
+    # En cas d'erreur, on continue quand même l'exécution
+    # Les gestionnaires ont été modifiés pour fonctionner même sans MongoDB
