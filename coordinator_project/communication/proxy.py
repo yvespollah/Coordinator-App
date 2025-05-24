@@ -118,7 +118,15 @@ class RedisProxy:
             'auth/login': True,
             'auth/login_response': True,
             'coord/heartbeat/#': True,
-            'coord/emergency': True
+            'coord/emergency': True,
+            'task/assignment': True,
+            'task/accept': True,
+            'task/complete': True,
+            'task/progress': True,
+            'auth/volunteer_register': True,
+            'auth/volunteer_register_response': True,
+            'auth/volunteer_login': True,
+            'auth/volunteer_login_response': True,
         }
         
         # Canaux réservés aux managers
@@ -136,7 +144,9 @@ class RedisProxy:
         self.volunteer_channels = {
             'volunteer/available': True,
             'volunteer/resources': True,
-            'tasks/result/#': True
+            'tasks/result/#': True,
+            'volunteer/data': True,
+            'task/status': True, 
         }
 
         
@@ -318,7 +328,7 @@ class RedisProxy:
         message_str = command.get_message()
         
         if not channel or not message_str:
-            logger.warning(f"Canal ou message manquant dans la commande PUBLISH: {command}")
+            logger.warning(f"Canal ou message manquant dans la commande PUBLISH: {raw_data}")
             return False
         
         logger.info(f"PUBLISH sur le canal {channel}: {message_str}")
@@ -365,8 +375,8 @@ class RedisProxy:
                         self.client_connections[client_id]['user_id'] = user_id
                         self.client_connections[client_id]['role'] = role
                         self.client_connections[client_id]['token'] = token
-                except jwt.InvalidTokenError:
-                    logger.warning(f"Token JWT invalide pour {client_id}")
+                except jwt.InvalidTokenError as e:
+                    logger.warning(f"Token JWT invalide pour {client_id}: {str(e)}")
                     authorized = False
             
             # Si non autorisé, renvoyer une erreur

@@ -13,6 +13,8 @@ VOLUNTEER_STATUS_CHOICES = [
 class Volunteer(Document):
     id = UUIDField(primary_key=True, default=uuid.uuid4)
     name = StringField(max_length=255, required=True)
+    username = StringField(max_length=255, required=True, unique=True)
+    password = StringField(max_length=255, required=True)  # Dans un système réel, il faudrait hasher ce mot de passe
     cpu_model = StringField(max_length=255, required=True)
     cpu_cores = IntField(required=True)
     total_ram = IntField(required=True, help_text="RAM in MB")
@@ -28,6 +30,7 @@ class Volunteer(Document):
     preferences = DictField(default=dict)
     performance = DictField(default=dict)
     last_activity = DateTimeField(null=True)
+    machine_info = DictField(default=dict)  # Pour stocker les informations détaillées de la machine
 
     def __str__(self):
         return f"Machine {self.name} - {self.current_status}"

@@ -85,6 +85,119 @@ def delete_pending_request(request_id: str) -> bool:
         logger.error(f"Erreur lors de la suppression de la requête {request_id}: {e}")
         return False
 
+
+def is_machine_already_registered(machine_info: Dict[str, Any]) -> Optional[Volunteer]:
+    """
+    Vérifie si une machine est déjà enregistrée en se basant sur ses caractéristiques matérielles.
+    
+    Args:
+        machine_info: Informations détaillées de la machine
+        
+    Returns:
+        Optional[Volunteer]: Le volontaire existant si trouvé, None sinon
+    """
+    if not machine_info:
+        return None
+    
+    # Approche 1: Recherche par caractéristiques matérielles spécifiques
+    # Critères d'identification de la machine
+    primary_criteria = {}
+    secondary_criteria = {}
+    
+    # Caractéristiques primaires (très stables)
+    criteria_count = 0
+    
+    # CPU - Type et nombre de coeurs (très stable)
+    if 'cpu' in machine_info:
+        cpu_info = machine_info['cpu']
+        if 'type' in cpu_info and cpu_info['type']:
+            primary_criteria['cpu_model'] = cpu_info['type']
+            criteria_count += 1
+        if 'coeurs_physiques' in cpu_info:
+            primary_criteria['cpu_cores'] = cpu_info['coeurs_physiques']
+            criteria_count += 1
+    
+    # Architecture du système (très stable)
+    if 'os' in machine_info and 'architecture' in machine_info['os']:
+        arch = machine_info['os']['architecture']
+        if arch:
+            primary_criteria['machine_info__os__architecture'] = arch
+            criteria_count += 1
+    
+    # RAM totale (très stable)
+    if 'memoire' in machine_info and 'ram' in machine_info['memoire']:
+        ram_info = machine_info['memoire']['ram']
+        if 'total' in ram_info:
+            # Convertir en MB si nécessaire
+            ram_total = ram_info['total']
+            if isinstance(ram_total, str) and 'GB' in ram_total:
+                try:
+                    ram_mb = float(ram_total.replace('GB', '').strip()) * 1024
+                    primary_criteria['total_ram'] = ram_mb
+                    criteria_count += 1
+                except ValueError:
+                    pass
+    
+    # Disque total (très stable)
+    if 'disque' in machine_info and 'total' in machine_info['disque']:
+        disk_total = machine_info['disque']['total']
+        if isinstance(disk_total, str) and 'GB' in disk_total:
+            try:
+                disk_gb = float(disk_total.replace('GB', '').strip())
+                primary_criteria['available_storage'] = disk_gb
+                criteria_count += 1
+            except ValueError:
+                pass
+    
+    # Caractéristiques secondaires (peuvent changer, mais rarement)
+    # Nom d'hôte
+    if 'os' in machine_info and 'hostname' in machine_info['os']:
+        hostname = machine_info['os']['hostname']
+        if hostname:
+            secondary_criteria['name__contains'] = hostname
+    
+    # OS (nom et version)
+    if 'os' in machine_info:
+        os_info = machine_info['os']
+        os_string = f"{os_info.get('nom', '')} {os_info.get('version', '')}".strip()
+        if os_string:
+            secondary_criteria['operating_system'] = os_string
+    
+    # Fréquence CPU
+    if 'cpu' in machine_info and 'frequence' in machine_info['cpu']:
+        freq_info = machine_info['cpu']['frequence']
+        if 'max' in freq_info:
+            secondary_criteria['machine_info__cpu__frequence__max'] = freq_info['max']
+    
+    # Carte mère et BIOS
+    if 'bios_carte_mere' in machine_info:
+        secondary_criteria['machine_info__bios_carte_mere'] = machine_info['bios_carte_mere']
+    
+    # Recherche avec les critères primaires (très stables)
+    if criteria_count >= 3:
+        logger.debug(f"Recherche de machine avec critères primaires: {primary_criteria}")
+        volunteer = Volunteer.objects(**primary_criteria).first()
+        if volunteer:
+            logger.info(f"Machine identifiée par caractéristiques matérielles primaires: {volunteer.name} (ID: {volunteer.id})")
+            return volunteer
+    
+    # Si aucune correspondance avec les critères primaires, essayer avec une combinaison de primaires et secondaires
+    if criteria_count >= 2 and secondary_criteria:
+        combined_criteria = {**primary_criteria, **secondary_criteria}
+        logger.debug(f"Recherche de machine avec critères combinés: {combined_criteria}")
+        volunteer = Volunteer.objects(**combined_criteria).first()
+        if volunteer:
+            logger.info(f"Machine identifiée par combinaison de caractéristiques: {volunteer.name} (ID: {volunteer.id})")
+            return volunteer
+    
+    # Approche 2: Recherche par similarité globale
+    # Si aucune correspondance exacte n'est trouvée, on peut rechercher les machines les plus similaires
+    # et vérifier si la similarité est suffisante pour considérer que c'est la même machine
+    
+    # Cette partie pourrait être implémentée dans une version future
+    
+    return None
+
 # Gestionnaires génériques
 
 def log_message_handler(channel: str, message: Message):
@@ -452,68 +565,142 @@ def volunteer_registration_handler(channel: str, message: Message):
     request_id = message.request_id
     
     # Vérifier que les données sont complètes
-    required_fields = ['name', 'node_id', 'cpu_model', 'cpu_cores', 'total_ram', 
-                      'available_storage', 'operating_system', 'ip_address', 'communication_port']
+    required_fields = ['name', 'ip_address', 'cpu_cores', 'ram_mb', 'disk_gb', 'username', 'password']
     for field in required_fields:
         if field not in data:
             logger.error(f"Champ requis manquant: {field}")
             
             # Envoyer une réponse d'erreur
-            response = Message.create_response(message, {
+            client = RedisClient.get_instance()
+            client.publish('auth/volunteer_register_response', {
                 'status': 'error',
                 'message': f"Champ requis manquant: {field}"
-            })
-            client = RedisClient.get_instance()
-            client.publish('auth/volunteer_register_response', response, request_id=request_id)
+            }, request_id=request_id)
             return
     
     # Enregistrer la requête en attente
     save_pending_request(request_id, data)
     
-    # Créer un nom d'utilisateur unique pour le volontaire
+    # Récupérer les informations de base
     name = data.get('name')
-    node_id = data.get('node_id')
-    username = f"{name}_{node_id}"
+    username = data.get('username')
+    password = data.get('password')
+    ip_address = data.get('ip_address')
+    cpu_cores = data.get('cpu_cores')
+    ram_mb = data.get('ram_mb')
+    disk_gb = data.get('disk_gb')
     
-    # Utiliser l'UUID comme mot de passe
-    volunteer_uuid = str(uuid.uuid4())
+    # Extraire les informations de la machine si présentes
+    machine_info = data.get('machine_info', {})
+    
+    # Déterminer le système d'exploitation
+    os_info = "Unknown"
+    if machine_info and 'os' in machine_info:
+        os_info = f"{machine_info['os'].get('nom', 'Unknown')} {machine_info['os'].get('version', '')}"
+    
+    # Déterminer le modèle CPU
+    cpu_model = "Unknown"
+    if machine_info and 'cpu' in machine_info:
+        cpu_model = machine_info['cpu'].get('type', 'Unknown')
+    
+    # Déterminer les informations GPU
+    gpu_available = False
+    gpu_model = None
+    gpu_memory = None
+    if machine_info and 'gpu' in machine_info:
+        gpu_available = machine_info['gpu'].get('Disponible', False)
+        if gpu_available:
+            gpu_model = machine_info['gpu'].get('model', 'Unknown')
+            gpu_memory = machine_info['gpu'].get('memory', 0)
     
     try:
-        # Vérifier si le volontaire existe déjà
-        existing_volunteer = Volunteer.objects(name=username).first()
-        if existing_volunteer:
-            logger.warning(f"Le volontaire {username} existe déjà")
+        # Vérifier d'abord si la machine est déjà enregistrée en se basant sur ses caractéristiques matérielles
+        existing_machine = is_machine_already_registered(machine_info)
+        if existing_machine:
+            logger.warning(f"La machine avec les caractéristiques fournies est déjà enregistrée sous le nom {existing_machine.name} (ID: {existing_machine.id})")
             
-            # Envoyer une réponse d'erreur
-            response = Message.create_response(message, {
-                'status': 'error',
-                'message': "Ce nom de volontaire est déjà utilisé"
-            })
+            # Mettre à jour les informations du volontaire existant si nécessaire
+            existing_machine.username = username
+            existing_machine.password = password
+            existing_machine.name = name
+            existing_machine.ip_address = ip_address
+            existing_machine.current_status = 'available'
+            existing_machine.last_activity = datetime.utcnow()
+            
+            # Mettre à jour les informations détaillées de la machine
+            if machine_info:
+                # Supprimer les informations trop détaillées qui pourraient causer des problèmes
+                if 'partitions_disque' in machine_info:
+                    del machine_info['partitions_disque']
+                existing_machine.machine_info = machine_info
+            
+            existing_machine.save()
+            
+            logger.info(f"Informations du volontaire {name} (ID: {existing_machine.id}) mises à jour")
+            
+            # Générer un nouveau token
+            token = generate_token(str(existing_machine.id), 'volunteer', 24)  # 24 heures
+            
+            # Envoyer une réponse de succès avec les informations mises à jour
             client = RedisClient.get_instance()
-            client.publish('auth/volunteer_register_response', response, request_id=request_id)
+            client.publish('auth/volunteer_register_response', {
+                'status': 'success',
+                'message': 'Machine déjà enregistrée, informations mises à jour',
+                'volunteer_id': str(existing_machine.id),
+                'username': username,
+                'token': token,
+                'is_update': True
+            }, request_id=request_id)
             
             # Supprimer la requête en attente
             delete_pending_request(request_id)
             return
         
-        # Créer le volontaire
+        # Si la machine n'est pas déjà enregistrée, vérifier si le nom d'utilisateur est déjà utilisé
+        existing_volunteer = Volunteer.objects(username=username).first()
+        if existing_volunteer:
+            logger.warning(f"Le volontaire avec username {username} existe déjà")
+            
+            # Envoyer une réponse d'erreur
+            client = RedisClient.get_instance()
+            client.publish('auth/volunteer_register_response', {
+                'status': 'error',
+                'message': "Ce nom d'utilisateur est déjà utilisé"
+            }, request_id=request_id)
+            
+            # Supprimer la requête en attente
+            delete_pending_request(request_id)
+            return
+        
+        # Créer le volontaire avec les nouvelles informations
         volunteer = Volunteer(
-            name=username,
-            cpu_model=data.get('cpu_model'),
-            cpu_cores=data.get('cpu_cores'),
-            total_ram=data.get('total_ram'),
-            available_storage=data.get('available_storage'),
-            operating_system=data.get('operating_system'),
-            gpu_available=data.get('gpu_available', False),
-            gpu_model=data.get('gpu_model'),
-            gpu_memory=data.get('gpu_memory'),
-            ip_address=data.get('ip_address'),
-            communication_port=data.get('communication_port'),
+            name=name,
+            username=username,
+            password=password,
+            cpu_model=cpu_model,
+            cpu_cores=cpu_cores,
+            total_ram=ram_mb,
+            available_storage=disk_gb,
+            operating_system=os_info,
+            gpu_available=gpu_available,
+            gpu_model=gpu_model,
+            gpu_memory=gpu_memory,
+            ip_address=ip_address,
+            communication_port=8002,  # Port par défaut pour les volontaires
             current_status='available'
         )
+        
+        # Stocker les informations détaillées de la machine
+        # Limiter la taille des informations pour éviter les problèmes de sérialisation
+        if machine_info:
+            # Supprimer les informations trop détaillées qui pourraient causer des problèmes
+            if 'partitions_disque' in machine_info:
+                del machine_info['partitions_disque']
+            volunteer.machine_info = machine_info
+        
         volunteer.save()
         
-        logger.info(f"Volontaire {username} enregistré avec succès (ID: {volunteer.id})")
+        logger.info(f"Volontaire {name} ({username}) enregistré avec succès (ID: {volunteer.id})")
         
         # Envoyer une réponse de succès
         client = RedisClient.get_instance()
@@ -522,7 +709,7 @@ def volunteer_registration_handler(channel: str, message: Message):
             'message': 'Volontaire enregistré avec succès',
             'volunteer_id': str(volunteer.id),
             'username': username,
-            'password': volunteer_uuid  # Envoyer le mot de passe pour la connexion future
+            'token': str(uuid.uuid4())  # Générer un token d'authentification
         }, request_id=request_id)
         
         # Supprimer la requête en attente
@@ -530,6 +717,8 @@ def volunteer_registration_handler(channel: str, message: Message):
         
     except Exception as e:
         logger.error(f"Erreur lors de l'enregistrement du volontaire: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         
         # Envoyer une réponse d'erreur
         client = RedisClient.get_instance()
@@ -579,10 +768,10 @@ def volunteer_login_handler(channel: str, message: Message):
     password = data.get('password')
     
     try:
-        # Rechercher le volontaire
-        volunteer = Volunteer.objects(name=username).first()
+        # Rechercher le volontaire par username
+        volunteer = Volunteer.objects(username=username).first()
         if not volunteer:
-            logger.warning(f"Volontaire {username} introuvable")
+            logger.warning(f"Volontaire avec username {username} introuvable")
             
             # Envoyer une réponse d'erreur
             client = RedisClient.get_instance()
@@ -595,8 +784,20 @@ def volunteer_login_handler(channel: str, message: Message):
             delete_pending_request(request_id)
             return
         
-        # Pour simplifier, nous ne vérifions pas le mot de passe ici
-        # Dans une implémentation réelle, il faudrait stocker et vérifier le mot de passe
+        # Vérifier le mot de passe
+        if volunteer.password != password:
+            logger.warning(f"Mot de passe incorrect pour le volontaire {username}")
+            
+            # Envoyer une réponse d'erreur
+            client = RedisClient.get_instance()
+            client.publish('auth/volunteer_login_response', {
+                'status': 'error',
+                'message': 'Identifiants invalides'
+            }, request_id=request_id)
+            
+            # Supprimer la requête en attente
+            delete_pending_request(request_id)
+            return
         
         # Générer un token JWT et un refresh token
         token = generate_token(str(volunteer.id), 'volunteer', 24)  # 24 heures
@@ -609,6 +810,15 @@ def volunteer_login_handler(channel: str, message: Message):
         
         logger.info(f"Volontaire {username} authentifié avec succès")
         
+        # Mettre à jour les informations machine si fournies
+        machine_info = data.get('machine_info')
+        if machine_info:
+            # Limiter la taille des informations pour éviter les problèmes de sérialisation
+            if 'partitions_disque' in machine_info:
+                del machine_info['partitions_disque']
+            volunteer.machine_info = machine_info
+            volunteer.save()
+        
         # Envoyer une réponse de succès
         client = RedisClient.get_instance()
         client.publish('auth/volunteer_login_response', {
@@ -617,7 +827,8 @@ def volunteer_login_handler(channel: str, message: Message):
             'token': token,
             'refresh_token': refresh_token,
             'volunteer_id': str(volunteer.id),
-            'username': volunteer.name
+            'username': volunteer.username,
+            'name': volunteer.name
         }, request_id=request_id)
         
         # Supprimer la requête en attente
@@ -625,6 +836,8 @@ def volunteer_login_handler(channel: str, message: Message):
         
     except Exception as e:
         logger.error(f"Erreur lors de l'authentification du volontaire: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         
         # Envoyer une réponse d'erreur
         client = RedisClient.get_instance()

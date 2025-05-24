@@ -5,9 +5,10 @@ Utilitaires divers pour le module de communication Redis.
 import time
 import json
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import jwt
 from django.conf import settings
+from volunteer.models import Volunteer
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,39 @@ def format_timestamp(timestamp: float) -> str:
     return datetime.fromtimestamp(timestamp).isoformat()
 
 
+
+def get_available_volunteers() -> List[Dict[str, Any]]:
+    """
+    Récupère la liste des volontaires disponibles depuis la base de données.
+    
+    Returns:
+        List[Dict[str, Any]]: Liste des volontaires avec leurs informations de ressources
+    """
+    try:
+        # Récupérer tous les volontaires avec le statut 'available'
+        volunteers = Volunteer.objects.filter(current_status='available')
+        
+        # Formater les données des volontaires pour le workflow
+        formatted_volunteers = []
+        for volunteer in volunteers:
+            formatted_volunteer = {
+                "volunteer_id": str(volunteer.id),
+                "username": volunteer.username,
+                "resources": {
+                    "cpu_cores": volunteer.cpu_cores,
+                    "memory_mb": volunteer.total_ram,
+                    "disk_space_mb": volunteer.available_storage * 1024,  # Convertir GB en MB
+                    "gpu": volunteer.gpu_available
+                }
+            }
+            formatted_volunteers.append(formatted_volunteer)
+        
+        logger.error(f"Récupéré {formatted_volunteers} volontaires disponibles")
+        return formatted_volunteers
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des volontaires: {e}")
+        # En cas d'erreur, retourner une liste vide
+        return []
 
 def get_coordinator_token():
     """
