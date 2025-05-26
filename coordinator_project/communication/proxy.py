@@ -468,6 +468,15 @@ class RedisProxy:
             safe_keys = ['username', 'email', 'password', 'request_id', 'client_ip', 'client_info', 'status']
             return {k: v for k, v in message.items() if k in safe_keys or k.startswith('_')}
         
+        # Pour le canal de réponse de login, on conserve le token (nécessaire pour l'authentification)
+        if channel == 'auth/login_response':
+            # Ajouter un log pour confirmer que le message contient bien un token
+            if 'token' in message:
+                logger.info(f"Message de login_response contient un token: {message['token'][:10]}...")
+            else:
+                logger.warning(f"Message de login_response ne contient pas de token: {message}")
+            return message
+        
         # Pour les autres canaux, masquer les mots de passe
         if 'password' in message:
             message['password'] = '********'
@@ -496,7 +505,28 @@ class RedisProxy:
                     channel = message['channel']
                     data = message['data']
                     
+                    # Ajouter des logs plus détaillés pour les canaux importants
+                    if channel == 'auth/login_response':
+                        try:
+                            # Tenter de parser les données pour voir si elles contiennent un token
+                            if isinstance(data, str):
+                                data_dict = json.loads(data)
+                                if 'token' in data_dict:
+                                    logger.info(f"Message auth/login_response contient un token: {data_dict['token'][:10]}...")
+                                else:
+                                    logger.warning(f"Message auth/login_response ne contient PAS de token!")
+                        except Exception as e:
+                            logger.error(f"Erreur lors du parsing des données de auth/login_response: {e}")
+                    
                     logger.info(f"Message reçu sur {channel} à transmettre aux clients abonnés")
+                    
+                    # Vérifier s'il y a des clients abonnés à ce canal
+                    subscribed_clients = [client_id for client_id, client_info in self.client_connections.items() 
+                                        if channel in client_info.get('subscribed_channels', set())]
+                    if not subscribed_clients:
+                        logger.warning(f"Aucun client abonné au canal {channel} pour recevoir le message")
+                    else:
+                        logger.info(f"Clients abonnés au canal {channel}: {subscribed_clients}")
                     
                     # Convertir le message au format RESP pour le transmettre aux clients
                     resp_message = self._format_pubsub_message(channel, data)
@@ -507,7 +537,7 @@ class RedisProxy:
                             try:
                                 client_socket = client_info['socket']
                                 client_socket.send(resp_message)
-                                logger.debug(f"Message transmis au client {client_id}")
+                                logger.info(f"Message transmis au client {client_id} sur le canal {channel}")
                             except Exception as e:
                                 logger.error(f"Erreur lors de la transmission au client {client_id}: {e}")
         
