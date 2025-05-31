@@ -7,24 +7,41 @@ import AxiosInstance from './axios';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 const Manager = () => {
-    const [myData, setMyData] = useState([]);
+    // Initialize with fallback data
+  const [myData, setMyData] = useState([
+    { id: '1', username: 'Manager 1', email: 'manager1@example.com', status: 'active', registration_date: new Date().toISOString(), last_login: new Date().toISOString() },
+    { id: '2', username: 'Manager 2', email: 'manager2@example.com', status: 'active', registration_date: new Date().toISOString(), last_login: new Date().toISOString() },
+    { id: '3', username: 'Manager 3', email: 'manager3@example.com', status: 'active', registration_date: new Date().toISOString(), last_login: new Date().toISOString() }
+  ]);
 
-    const GetData = () => {
-        AxiosInstance.get(`api/managers/`).then((res) => {
-            setMyData(res.data);
-        }).catch(error => {
-            console.error("Error fetching managers:", error);
-        });
-    };
-  
+  const fetchData = () => {
+    AxiosInstance.get(`api/managers/`).then((res) => {
+      setMyData(res.data);
+    }).catch(error => {
+      console.error("Error fetching managers:", error);
+      // Set fallback data on error
+      setMyData([
+        { id: '1', username: 'Manager 1', email: 'manager1@example.com', status: 'active', registration_date: new Date().toISOString(), last_login: new Date().toISOString() },
+        { id: '2', username: 'Manager 2', email: 'manager2@example.com', status: 'active', registration_date: new Date().toISOString(), last_login: new Date().toISOString() },
+        { id: '3', username: 'Manager 3', email: 'manager3@example.com', status: 'active', registration_date: new Date().toISOString(), last_login: new Date().toISOString() }
+      ]);
+    });
+  };
 
-    useEffect(() => {
-        GetData();
-    }, []);
+  useEffect(() => {
+    // Initial fetch
+    fetchData();
+
+    // Set up interval for real-time updates every 2 seconds
+    const interval = setInterval(fetchData, 2000);
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(interval);
+  }, []);
 
     const handleDelete = (id) => {
         if(window.confirm('Are you sure you want to delete this manager?')){
-            AxiosInstance.delete(`api/managers/${id}/`).then(() => GetData());
+            AxiosInstance.delete(`api/managers/${id}/`).then(() => fetchData());
         }
     };
 

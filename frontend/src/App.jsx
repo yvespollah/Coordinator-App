@@ -15,6 +15,7 @@ import Notifications from './components/Notifications';
 // import Logs from './components/Logs';
 import Settings from './components/Settings';
 import Help from './components/Help';
+import SystemStatus from './components/SystemStatus';
 
 
 
@@ -40,6 +41,7 @@ function App() {
       {/* <Route path="/logs" element={<Logs />} /> */}
       <Route path="/settings" element={<Settings />} />
       <Route path="/help" element={<Help />} />
+      <Route path="/system-status" element={<SystemStatus />} />
   </Routes>
     }
     />

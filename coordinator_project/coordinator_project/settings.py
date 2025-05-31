@@ -40,7 +40,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    'channels',
     'volunteer',
     'manager',
     'communication',
@@ -168,7 +167,7 @@ REDIS_PORT = 6380
 REDIS_DB = 0
 
 # Redis proxy settings
-REDIS_PROXY_HOST = '127.0.0.1'
+REDIS_PROXY_HOST = 'localhost'
 REDIS_PORT_FOR_PROXY = 6379
 REDIS_PROXY_PORT = 6380
 REDIS_PROXY_DB = 0

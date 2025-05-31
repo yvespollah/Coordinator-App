@@ -71,11 +71,11 @@ export default function ShortMenu() {
       </ListItemButton>
 
       {/* Logs */}
-      <ListItemButton component={Link} to="/logs" selected={path === "/logs"} sx={{display:'flex', justifyContent:'center'}}>
+      {/* <ListItemButton component={Link} to="/logs" selected={path === "/logs"} sx={{display:'flex', justifyContent:'center'}}>
         <ListItemIcon sx={{display:'flex', justifyContent:'center'}}>
             <ForumIcon />
         </ListItemIcon>
-      </ListItemButton>
+      </ListItemButton> */}
 
       {/* Settings */}
       <ListItemButton component={Link} to="/settings" selected={path === "/settings"} sx={{display:'flex', justifyContent:'center'}}>

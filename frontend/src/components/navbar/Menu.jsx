@@ -19,6 +19,7 @@ import ForumIcon from '@mui/icons-material/Forum';
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import SettingsInputAntennaIcon from '@mui/icons-material/SettingsInputAntenna';
+import DevicesIcon from '@mui/icons-material/Devices';
 import {Link, useLocation} from 'react-router-dom' // for links
 import { useState } from 'react';
 
@@ -155,17 +156,23 @@ export default function Menu() {
     </ListItemButton>
     <Collapse in={openCommunication} timeout="auto" unmountOnExit>
         <List component="div" disablePadding>
-            <ListItemButton sx={{ pl: 4 }} component={Link} to="/logs" selected={path === "/logs"}>
+            {/* <ListItemButton sx={{ pl: 4 }} component={Link} to="/logs" selected={path === "/logs"}>
                 <ListItemIcon>
                     <ForumIcon />
                 </ListItemIcon>
                 <ListItemText primary="Logs" />
-            </ListItemButton>
-            <ListItemButton sx={{ pl: 4 }} component={Link} to="/channel-monitor" selected={path === "/channel-monitor"}>
+            </ListItemButton> */}
+            {/* <ListItemButton sx={{ pl: 4 }} component={Link} to="/channel-monitor" selected={path === "/channel-monitor"}>
                 <ListItemIcon>
                     <SettingsInputAntennaIcon />
                 </ListItemIcon>
                 <ListItemText primary="Channel Monitor" />
+            </ListItemButton> */}
+            <ListItemButton sx={{ pl: 4 }} component={Link} to="/system-status" selected={path === "/system-status"}>
+                <ListItemIcon>
+                    <DevicesIcon />
+                </ListItemIcon>
+                <ListItemText primary="État du Système" />
             </ListItemButton>
         </List>
     </Collapse>

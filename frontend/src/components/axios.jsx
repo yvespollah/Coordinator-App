@@ -1,7 +1,6 @@
-import axios from 'axios'
+import axios from 'axios';
 
-
-const baseUrl = 'http://127.0.0.1:8090/'
+const baseUrl = 'http://127.0.0.1:8000/'
 
 const AxiosInstance = axios.create({
     baseURL: baseUrl,
@@ -12,4 +11,4 @@ const AxiosInstance = axios.create({
     }
 })
 
-export default AxiosInstance
+export default AxiosInstance;
