@@ -1,0 +1,290 @@
+/**
+ * Service de communication en temps réel avec le backend
+ * Utilise WebSocket pour recevoir des mises à jour en temps réel
+ */
+
+import axios from 'axios';
+
+const API_URL = 'http://127.0.0.1:8090';
+const WS_URL = 'ws://127.0.0.1:8090/ws/communication/';
+
+class CommunicationService {
+  constructor() {
+    this.socket = null;
+    this.isConnected = false;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+    this.reconnectInterval = 3000; // 3 secondes
+    this.heartbeatInterval = null;
+    this.subscribers = new Map();
+    this.lastMessages = [];
+    this.connectionStats = {
+      total_participants: 0,
+      connected: 0,
+      managers: {
+        total: 0,
+        connected: 0,
+        list: []
+      },
+      volunteers: {
+        total: 0,
+        connected: 0,
+        list: []
+      },
+      recent_messages: []
+    };
+  }
+
+  /**
+   * Établit une connexion WebSocket avec le backend
+   * @returns {Promise<boolean>} - Promesse résolue avec l'état de la connexion
+   */
+  connect() {
+    return new Promise((resolve) => {
+      if (this.isConnected) {
+        console.log('WebSocket déjà connecté');
+        resolve(true);
+        return;
+      }
+
+      try {
+        this.socket = new WebSocket(WS_URL);
+
+        this.socket.onopen = () => {
+          console.log('WebSocket connecté à', WS_URL);
+          this.isConnected = true;
+          this.reconnectAttempts = 0;
+          this.startHeartbeat();
+          console.log('Tentative de récupération des statistiques...');
+          this.fetchConnectionStats()
+            .then(response => {
+              console.log('Statistiques reçues:', response.data);
+            })
+            .catch(error => {
+              console.error('Erreur lors de la récupération des statistiques:', error);
+            });
+          resolve(true);
+        };
+
+        this.socket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log('Message WebSocket reçu:', data);
+            
+            // Mise à jour des statistiques si c'est un message de type 'stats'
+            if (data.type === 'stats') {
+              this.connectionStats = data.data;
+            }
+            
+            // Ajouter le message à l'historique
+            this.lastMessages.unshift({
+              timestamp: new Date().toISOString(),
+              data: data
+            });
+            
+            // Limiter l'historique à 50 messages
+            if (this.lastMessages.length > 50) {
+              this.lastMessages.pop();
+            }
+            
+            // Notifier tous les abonnés
+            this.notifySubscribers(data);
+          } catch (error) {
+            console.error('Erreur lors du traitement du message WebSocket:', error);
+          }
+        };
+
+        this.socket.onclose = (event) => {
+          console.log(`WebSocket déconnecté avec le code: ${event.code}`);
+          this.isConnected = false;
+          this.stopHeartbeat();
+          
+          // Tentative de reconnexion si la déconnexion n'est pas volontaire
+          if (!event.wasClean && this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.reconnectAttempts++;
+            console.log(`Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts} dans ${this.reconnectInterval/1000}s...`);
+            setTimeout(() => this.connect(), this.reconnectInterval);
+          }
+        };
+
+        this.socket.onerror = (error) => {
+          console.error('Erreur WebSocket:', error);
+          resolve(false);
+        };
+      } catch (error) {
+        console.error('Erreur lors de la création du WebSocket:', error);
+        resolve(false);
+      }
+    });
+  }
+
+  /**
+   * S'abonne à un type d'événement spécifique
+   * @param {string} eventType - Type d'événement (manager, volunteer, task, etc.)
+   * @param {Function} callback - Fonction appelée lorsqu'un événement du type spécifié est reçu
+   * @returns {Function} - Fonction pour se désabonner
+   */
+  subscribe(eventType, callback) {
+    if (!this.subscribers.has(eventType)) {
+      this.subscribers.set(eventType, new Set());
+    }
+    
+    const subscribers = this.subscribers.get(eventType);
+    subscribers.add(callback);
+    
+    return () => {
+      subscribers.delete(callback);
+      if (subscribers.size === 0) {
+        this.subscribers.delete(eventType);
+      }
+    };
+  }
+
+  /**
+   * Notifie tous les abonnés d'un événement
+   * @param {Object} data - Données de l'événement
+   */
+  notifySubscribers(data) {
+    // Notifier les abonnés au type spécifique
+    if (data.type && this.subscribers.has(data.type)) {
+      this.subscribers.get(data.type).forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error(`Erreur dans un callback pour l'événement ${data.type}:`, error);
+        }
+      });
+    }
+    
+    // Notifier les abonnés à tous les événements
+    if (this.subscribers.has('all')) {
+      this.subscribers.get('all').forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error('Erreur dans un callback pour tous les événements:', error);
+        }
+      });
+    }
+  }
+
+  /**
+   * Publie un message sur le backend
+   * @param {string} channel - Canal de publication
+   * @param {Object} message - Message à publier
+   * @returns {Promise<boolean>} - Promesse résolue avec le succès de la publication
+   */
+  publish(channel, message) {
+    if (!this.isConnected) {
+      console.error('Impossible de publier: WebSocket non connecté');
+      return Promise.resolve(false);
+    }
+    
+    try {
+      const payload = {
+        type: 'publish',
+        channel: channel,
+        message: message
+      };
+      
+      this.socket.send(JSON.stringify(payload));
+      return Promise.resolve(true);
+    } catch (error) {
+      console.error('Erreur lors de la publication du message:', error);
+      return Promise.resolve(false);
+    }
+  }
+
+  /**
+   * Envoie un heartbeat au serveur pour maintenir la connexion active
+   */
+  startHeartbeat() {
+    this.heartbeatInterval = setInterval(() => {
+      if (this.isConnected) {
+        try {
+          this.socket.send(JSON.stringify({ type: 'heartbeat' }));
+        } catch (error) {
+          console.error('Erreur lors de l\'envoi du heartbeat:', error);
+        }
+      }
+    }, 30000); // 30 secondes
+  }
+
+  /**
+   * Arrête l'envoi de heartbeats
+   */
+  stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+  }
+
+  /**
+   * Récupère les statistiques de connexion depuis le backend
+   * @returns {Promise<Object>} - Promesse résolue avec les statistiques de connexion
+   */
+  fetchConnectionStats() {
+    // Essayer plusieurs URLs possibles pour trouver la bonne
+    const urls = [
+      `${API_URL}/api/stats/`,
+      `${API_URL}/api/communication/stats/`,
+      `${API_URL}/api/communication/`
+    ];
+    
+    console.log('Tentative avec les URLs suivantes:', urls);
+    
+    // Fonction récursive pour essayer chaque URL
+    const tryNextUrl = (index) => {
+      if (index >= urls.length) {
+        console.error('Toutes les URLs ont échoué');
+        return Promise.resolve({ data: this.connectionStats });
+      }
+      
+      console.log('Essai avec URL:', urls[index]);
+      return axios.get(urls[index])
+        .then(response => {
+          console.log('Réponse API reçue:', response);
+          this.connectionStats = response.data;
+          return response;
+        })
+        .catch(error => {
+          console.error(`Erreur avec l'URL ${urls[index]}:`, error);
+          return tryNextUrl(index + 1);
+        });
+    };
+    
+    return tryNextUrl(0);
+  }
+
+  /**
+   * Récupère les statistiques de connexion en cache
+   * @returns {Object} - Statistiques de connexion en cache
+   */
+  getConnectionStats() {
+    return Promise.resolve({ data: this.connectionStats });
+  }
+
+  /**
+   * Récupère les derniers messages reçus
+   * @returns {Array} - Derniers messages reçus
+   */
+  getLastMessages() {
+    return this.lastMessages;
+  }
+
+  /**
+   * Déconnecte le WebSocket
+   */
+  disconnect() {
+    if (this.isConnected && this.socket) {
+      this.socket.close();
+      this.isConnected = false;
+      this.stopHeartbeat();
+    }
+  }
+}
+
+// Singleton pour partager l'instance entre les composants
+const communicationService = new CommunicationService();
+export default communicationService;

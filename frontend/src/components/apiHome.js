@@ -2,59 +2,60 @@
 import AxiosInstance from './axios';
 
 export const fetchManagersCount = async () => {
-  const res = await AxiosInstance.get('api/managers/');
+  const res = await AxiosInstance.get('/api/managers/');
   return Array.isArray(res.data) ? res.data.length : 0;
 };
 
 export const fetchVolunteersCount = async () => {
-  const res = await AxiosInstance.get('api/volunteers/');
+  const res = await AxiosInstance.get('/api/volunteers/');
   return Array.isArray(res.data) ? res.data.length : 0;
 };
 
 
 export const fetchWorkflowsCount = async () => {
-  const res = await AxiosInstance.get('api/workflows/');
+  const res = await AxiosInstance.get('/api/workflows/');
   return Array.isArray(res.data) ? res.data.length : 0;
 };
 
 export const fetchTasksCount = async () => {
-  const res = await AxiosInstance.get('api/tasks/');
+  const res = await AxiosInstance.get('/api/tasks/');
   return Array.isArray(res.data) ? res.data.length : 0;
 };
 
 export const fetchRecentLogs = async () => {
-  const res = await AxiosInstance.get('api/logs/?limit=5');
+  // Note: Vérifiez si cet endpoint existe réellement dans votre backend
+  const res = await AxiosInstance.get('/api/communication/logs/?limit=5');
   return Array.isArray(res.data) ? res.data : [];
 };
 
 export const fetchAnnouncements = async () => {
-  const res = await AxiosInstance.get('api/announcements/?limit=3');
+  // Note: Vérifiez si cet endpoint existe réellement dans votre backend
+  const res = await AxiosInstance.get('/api/communication/announcements/?limit=3');
   return Array.isArray(res.data) ? res.data : [];
 };
 
 export const fetchActiveVolunteers = async () => {
-  const res = await AxiosInstance.get('api/volunteers/?active=true&limit=5');
+  const res = await AxiosInstance.get('/api/volunteers/?status=available&limit=5');
   return Array.isArray(res.data) ? res.data : [];
 };
 
 export const fetchRunningWorkflows = async () => {
-  // Adjust endpoint or params if your backend uses a different filter for running workflows
-  const res = await AxiosInstance.get('api/workflows/?status=running');
+  const res = await AxiosInstance.get('/api/workflows/?status=RUNNING');
   return Array.isArray(res.data) ? res.data : [];
 };
 
 export async function fetchSystemHealth() {
-  const res = await AxiosInstance.get('api/system-health/');
+  const res = await AxiosInstance.get('/api/system-health/');
   return res.data;
 }
 
 export async function fetchWorkflowsByStatus() {
-  const res = await AxiosInstance.get('api/analytics/workflows_by_status/');
+  const res = await AxiosInstance.get('/api/analytics/workflows_by_status/');
   return res.data;
 }
 
 export async function fetchVolunteersByStatus() {
-  const res = await AxiosInstance.get('api/analytics/volunteers_by_status/');
+  const res = await AxiosInstance.get('/api/analytics/volunteers_by_status/');
   return res.data;
 }
 
