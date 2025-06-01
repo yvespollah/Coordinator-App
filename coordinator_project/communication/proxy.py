@@ -121,8 +121,6 @@ class RedisProxy:
             'coord/emergency': True,
             'task/assignment': True,
             'task/accept': True,
-            'task/complete': True,
-            'task/progress': True,
             'auth/volunteer_register': True,
             'auth/volunteer_register_response': True,
             'auth/volunteer_login': True,
@@ -133,20 +131,23 @@ class RedisProxy:
         self.manager_channels = {
             'tasks/new': True,
             'tasks/assign': True,
-            'tasks/status/#': True,
+            'task/terminate': True,
             'manager/status': True,
             'manager/requests': True,
             'workflow/submit': True,
             'workflow/submit_response': True,
+            'workflow/terminate': True,
         }
         
         # Canaux réservés aux volunteers
         self.volunteer_channels = {
             'volunteer/available': True,
             'volunteer/resources': True,
-            'tasks/result/#': True,
+            'task/result/#': True,
             'volunteer/data': True,
             'task/status': True, 
+            'task/complete': True,
+            'task/progress': True,
         }
 
         
