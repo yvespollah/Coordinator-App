@@ -75,9 +75,10 @@ def format_timestamp(timestamp: float) -> str:
 def get_available_volunteers() -> List[Dict[str, Any]]:
     """
     Récupère la liste des volontaires disponibles depuis la base de données.
+    Inclut les scores de confiance et les statistiques de performance pour chaque volontaire.
     
     Returns:
-        List[Dict[str, Any]]: Liste des volontaires avec leurs informations de ressources
+        List[Dict[str, Any]]: Liste des volontaires avec leurs informations de ressources et scores de confiance
     """
     try:
         # Récupérer tous les volontaires avec le statut 'available'
@@ -86,6 +87,16 @@ def get_available_volunteers() -> List[Dict[str, Any]]:
         # Formater les données des volontaires pour le workflow
         formatted_volunteers = []
         for volunteer in volunteers:
+            # Récupérer les données de performance
+            performance = volunteer.performance if hasattr(volunteer, 'performance') and volunteer.performance else {}
+            
+            # Valeurs par défaut si les données de performance ne sont pas disponibles
+            tasks_total = performance.get('tasks_total', 0)
+            tasks_completed = performance.get('tasks_completed', 0)
+            tasks_failed = performance.get('tasks_failed', 0)
+            trust_score = performance.get('trust_score', 0)
+            
+            # Formater les données du volontaire
             formatted_volunteer = {
                 "volunteer_id": str(volunteer.id),
                 "username": volunteer.username,
@@ -94,11 +105,18 @@ def get_available_volunteers() -> List[Dict[str, Any]]:
                     "memory_mb": volunteer.total_ram,
                     "disk_space_mb": volunteer.available_storage * 1024,  # Convertir GB en MB
                     "gpu": volunteer.gpu_available
+                },
+                "performance": {
+                    "tasks_total": tasks_total,
+                    "tasks_completed": tasks_completed,
+                    "tasks_failed": tasks_failed,
+                    "trust_score": trust_score,
+                    "completion_rate": (tasks_completed / tasks_total) * 100 if tasks_total > 0 else 0
                 }
             }
             formatted_volunteers.append(formatted_volunteer)
         
-        logger.error(f"Récupéré {formatted_volunteers} volontaires disponibles")
+        logger.info(f"Récupéré {len(formatted_volunteers)} volontaires disponibles avec leurs scores de confiance")
         return formatted_volunteers
     except Exception as e:
         logger.error(f"Erreur lors de la récupération des volontaires: {e}")

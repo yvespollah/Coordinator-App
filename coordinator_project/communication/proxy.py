@@ -137,6 +137,7 @@ class RedisProxy:
             'workflow/submit': True,
             'workflow/submit_response': True,
             'workflow/terminate': True,
+            'task/reassignment': True,
         }
         
         # Canaux réservés aux volunteers
@@ -408,6 +409,61 @@ class RedisProxy:
             # Reconstruire la commande PUBLISH avec le message transformé
             new_message_str = json.dumps(message)
             new_command = f"*3\r\n$7\r\nPUBLISH\r\n${len(channel)}\r\n{channel}\r\n${len(new_message_str)}\r\n{new_message_str}\r\n"
+            
+            # Enregistrer le message dans la base de données
+            try:
+                # Importer ici pour éviter les imports circulaires
+                from message_logging.services import log_message
+                
+                # Déterminer le type d'expéditeur et de destinataire
+                sender_type = role if role else 'unknown'
+                sender_id = user_id if user_id else client_id
+                
+                # Déterminer le type de destinataire en fonction du canal
+                receiver_type = None
+                receiver_id = None
+                
+                if channel.startswith('volunteer/'):
+                    receiver_type = 'volunteer'
+                elif channel.startswith('manager/'):
+                    receiver_type = 'manager'
+                elif channel.startswith('coordinator/'):
+                    receiver_type = 'coordinator'
+                elif channel == 'task/assignment':
+                    receiver_type = 'volunteer'
+                    if isinstance(message, dict) and 'volunteer_id' in message:
+                        receiver_id = message['volunteer_id']
+                elif channel == 'task/status':
+                    receiver_type = 'manager'
+                    if isinstance(message, dict) and 'manager_id' in message:
+                        receiver_id = message['manager_id']
+                elif channel == 'task/reassignment/response':
+                    receiver_type = 'manager'
+                    if isinstance(message, dict) and 'manager_id' in message:
+                        receiver_id = message['manager_id']
+                else:
+                    receiver_type = 'Everybody'
+                
+                # Récupérer l'ID de requête et le type de message
+                request_id = message.get('request_id', '') if isinstance(message, dict) else ''
+                message_type = message.get('message_type', 'request') if isinstance(message, dict) else 'request'
+                
+                # Enregistrer le message
+                log_message(
+                    sender_type=sender_type,
+                    sender_id=sender_id,
+                    channel=channel,
+                    request_id=request_id,
+                    message_type=message_type,
+                    content=message,
+                    receiver_type=receiver_type,
+                    receiver_id=receiver_id
+                )
+                
+                logger.info(f"Message enregistré dans la base de données: {sender_type}:{sender_id} -> {channel}")
+            except Exception as e:
+                logger.error(f"Erreur lors de l'enregistrement du message: {e}")
+                logger.error(traceback.format_exc())
             
             # Envoyer la commande modifiée à Redis
             redis_socket.send(new_command.encode('utf-8'))

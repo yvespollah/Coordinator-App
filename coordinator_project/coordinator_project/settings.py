@@ -43,7 +43,8 @@ INSTALLED_APPS = [
     'volunteer',
     'manager',
     'communication',
-    'redis_communication.apps.RedisCommunicationConfig'
+    'redis_communication.apps.RedisCommunicationConfig',
+    'message_logging'
 ]
 
 MIDDLEWARE = [

@@ -39,6 +39,22 @@ class RedisCommunicationConfig(AppConfig):
         # Enregistrer les gestionnaires d'événements
         register_handlers(client)
         
+        # Enregistrer les gestionnaires de performances des volontaires
+        try:
+            from .volunteer_performance_handlers import register_handlers as register_performance_handlers
+            register_performance_handlers()
+            logger.info("Gestionnaires de performances des volontaires enregistrés")
+        except Exception as e:
+            logger.error(f"Erreur lors de l'enregistrement des gestionnaires de performances: {e}")
+        
+        # Enregistrer les gestionnaires de demandes de réassignation de tâches
+        try:
+            from .task_assignment_handlers import register_handlers as register_task_assignment_handlers
+            register_task_assignment_handlers()
+            logger.info("Gestionnaires de demandes de réassignation de tâches enregistrés")
+        except Exception as e:
+            logger.error(f"Erreur lors de l'enregistrement des gestionnaires de demandes de réassignation de tâches: {e}")
+        
         logger.info("Application redis_communication initialisée")
         logger.info(f"Canaux enregistrés: {list(client.handlers.keys())}")
         

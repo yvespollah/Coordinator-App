@@ -212,9 +212,9 @@ class RedisClient:
         logger.info(f"Désabonné du canal: {channel}")
         return True
     
-    def publish(self, channel: str, message_data: Any, request_id: str = None,  token: str = None, message_type: str = None):
+    def publish(self, channel: str, message_data: Any, request_id: str = None, token: str = None, message_type: str = None, real_sender_id: str = None):
         """
-        Publie un message sur un canal.
+        Publie un message sur un canal et enregistre le message dans la base de données.
         
         Args:
             channel: Nom du canal
@@ -222,6 +222,7 @@ class RedisClient:
             request_id: ID de requête optionnel (généré automatiquement si non fourni)
             token: Token JWT pour l'authentification (optionnel)
             message_type: Type de message (request ou response)
+            real_sender_id: ID réel de l'expéditeur (manager_id, volunteer_id, etc.)
             
         Returns:
             str: ID de la requête
@@ -235,12 +236,15 @@ class RedisClient:
                 
         logger.info(f"Publication d'un message de type '{message_type}' sur le canal {channel}")
         
+        # Utiliser l'ID réel de l'expéditeur s'il est fourni
+        sender_id = real_sender_id or self.client_id
+        
         # Créer un message standardisé
         message = Message(
             request_id=request_id or str(uuid.uuid4()),
             sender={
                 'type': self.client_type,
-                'id': self.client_id
+                'id': sender_id
             },
             message_type=message_type,
             data=message_data,
@@ -252,12 +256,45 @@ class RedisClient:
             message.token = token
             logger.info(f"Token JWT ajouté au message pour le canal {channel}")
         
-        
         # Publier le message
         try:
-            self.redis.publish(channel, message.to_json())
+            # Sérialiser le message
+            json_message = message.to_json()
+            
+            # Publier sur Redis
+            self.redis.publish(channel, json_message)
             self.stats['messages_sent'] += 1
             self.stats['last_activity'] = time.time()
+            
+            # Enregistrer le message dans la base de données
+            try:
+                # Import ici pour éviter les importations circulaires
+                from message_logging.services import log_message
+                
+                # Déterminer le destinataire en fonction du canal
+                receiver_type = None
+                receiver_id = None
+                
+                if channel.startswith('manager/'):
+                    receiver_type = 'manager'
+                elif channel.startswith('volunteer/'):
+                    receiver_type = 'volunteer'
+                elif channel.startswith('coordinator/'):
+                    receiver_type = 'coordinator'
+                
+                # Enregistrer le message
+                log_message(
+                    sender_type=self.client_type,
+                    sender_id=sender_id,
+                    channel=channel,
+                    request_id=message.request_id,
+                    message_type=message_type,
+                    content=message_data,
+                    receiver_type=receiver_type,
+                    receiver_id=receiver_id
+                )
+            except Exception as log_error:
+                logger.error(f"Erreur lors de l'enregistrement du message: {log_error}")
             
             logger.debug(f"Message publié sur {channel}: {message.request_id}")
             return message.request_id
