@@ -217,14 +217,27 @@ MONGODB_CONNECT_OPTIONS = {
 
 # Connexion à MongoDB avec mongoengine
 import mongoengine
-try:
-    # Utilisation de la chaîne de connexion URI avec les options
-    mongoengine.connect(
-        host=MONGODB_URI,
-        **MONGODB_CONNECT_OPTIONS
-    )
-    print(f"Connexion à MongoDB établie avec succès: {MONGODB_URI}")
-except Exception as e:
-    print(f"Erreur de connexion à MongoDB: {e}")
-    # En cas d'erreur, on continue quand même l'exécution
-    # Les gestionnaires ont été modifiés pour fonctionner même sans MongoDB
+
+# Fonction pour vérifier si une connexion existe déjà
+def is_mongo_connected(alias='default'):
+    try:
+        connection = mongoengine.connection.get_connection(alias)
+        return connection.is_authenticated
+    except mongoengine.connection.ConnectionFailure:
+        return False
+    except Exception:
+        # Si la méthode 'is_authenticated' n'existe pas ou autre erreur
+        return False
+
+# Vérifier la connexion avant d'en établir une nouvelle
+if not is_mongo_connected():
+    try:
+        mongoengine.connect(
+            host=MONGODB_URI,
+            **MONGODB_CONNECT_OPTIONS
+        )
+        print(f"Connexion à MongoDB établie avec succès: {MONGODB_URI}")
+    except Exception as e:
+        print(f"Erreur de connexion à MongoDB: {e}")
+else:
+    print("Une connexion à MongoDB est déjà active.")

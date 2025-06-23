@@ -50,15 +50,8 @@ def task_assignment_request_handler(channel: str, message: Message):
             send_assignment_response(task_id, manager_id, success=False, error="Tâche non trouvée")
             return
         
-        # Récupérer le manager
-        manager = None
-        if manager_id:
-            manager = Manager.objects.filter(id=manager_id).first()
-            if not manager:
-                logger.warning(f"Manager non trouvé: {manager_id}")
-        
         # Marquer la tâche comme en attente de réassignation
-        task.status = 'pending_reassignment'
+        task.status = 'PENDING'
         task.save()
         
         # Rechercher des volontaires disponibles avec les ressources nécessaires
@@ -75,10 +68,10 @@ def task_assignment_request_handler(channel: str, message: Message):
             # Envoyer une réponse d'échec
             send_assignment_response(task_id, manager_id, success=False, error="Aucun volontaire disponible")
             return
-        
+            
         # Trier les volontaires par score de confiance décroissant
         suitable_volunteers.sort(
-            key=lambda v: v.get('performance', {}).get('trust_score', 0), 
+            key=lambda v: v.get('performance', {}).get('trust_score', 0),
             reverse=True
         )
         
@@ -86,11 +79,17 @@ def task_assignment_request_handler(channel: str, message: Message):
         selected_volunteer = suitable_volunteers[0]
         volunteer_id = selected_volunteer['volunteer_id']
         
-        # Mettre à jour la tâche avec le nouveau volontaire
-        task.assigned_volunteer = volunteer_id
-        task.status = 'assigned'
-        task.save()
+        # Créer une nouvelle assignation
+        TaskAssignment.objects.create(
+            task=task,
+            volunteer=volunteer_id,
+            status='ASSIGNED'
+        )
         
+        # Mettre à jour la tâche
+        task.assigned_to = volunteer_id
+        task.status = 'ASSIGNED' 
+        task.save()
         
         # Envoyer une réponse de succès au manager
         send_assignment_response(task_id, manager_id, success=True, volunteer_id=volunteer_id)

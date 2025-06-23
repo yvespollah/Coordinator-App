@@ -10,7 +10,6 @@ import json
 import traceback
 from datetime import datetime
 import jwt
-from django.conf import settings
 import redis
 
 # Configuration du logging
@@ -240,7 +239,7 @@ class RedisProxy:
             
             while self.running:
                 # Recevoir des données du client
-                data = client_socket.recv(4096)
+                data = client_socket.recv(9097152) # 2Mo
                 if not data:
                     logger.debug(f"Pas de donnees recues")
                     break
@@ -358,6 +357,7 @@ class RedisProxy:
             elif token:
                 try:
                     # Vérifier le token JWT
+                    from django.conf import settings
                     payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
                     logger.info(f"Token JWT valide pour {payload}")
                     user_id = payload.get('user_id')

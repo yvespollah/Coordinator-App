@@ -11,6 +11,13 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     help = 'Initialise les performances des volontaires existants'
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--reset',
+            action='store_true',
+            help='Réinitialise toutes les performances existantes'
+        )
+
     def handle(self, *args, **options):
         """
         Exécute la commande pour initialiser les performances des volontaires.
@@ -22,14 +29,7 @@ class Command(BaseCommand):
         count = 0
         
         for volunteer in volunteers:
-            # Initialiser les performances si elles n'existent pas
-            if not volunteer.performance or not isinstance(volunteer.performance, dict):
-                volunteer.performance = {
-                    'tasks_total': 0,
-                    'tasks_completed': 0,
-                    'tasks_failed': 0,
-                    'trust_score': 0
-                }
+            # Réinitialiser ou initialiser les performances selon l'option
                 volunteer.save()
                 count += 1
                 self.stdout.write(f'Performance initialisée pour le volontaire {volunteer.name}')

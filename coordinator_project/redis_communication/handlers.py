@@ -434,7 +434,7 @@ def manager_login_handler(channel: str, message: Message):
                     'message': 'Identifiants invalides'
                 })
                 client = RedisClient.get_instance()
-                client.publish('auth/login_response', response, request_id=request_id)
+                client.publish('auth/login_response', response.to_dict(), request_id=request_id)
                 
                 # Supprimer la requête en attente
                 delete_pending_request(request_id)
@@ -448,7 +448,7 @@ def manager_login_handler(channel: str, message: Message):
                 'message': 'Identifiants invalides'
             })
             client = RedisClient.get_instance()
-            client.publish('auth/login_response', response, request_id=request_id)
+            client.publish('auth/login_response', response.to_dict(), request_id=request_id)
             
             # Supprimer la requête en attente
             delete_pending_request(request_id)
@@ -465,7 +465,7 @@ def manager_login_handler(channel: str, message: Message):
                     'message': 'Identifiants invalides'
                 })
                 client = RedisClient.get_instance()
-                client.publish('auth/login_response', response, request_id=request_id)
+                client.publish('auth/login_response', response.to_dict(), request_id=request_id)
                 
                 # Supprimer la requête en attente
                 delete_pending_request(request_id)
@@ -479,7 +479,7 @@ def manager_login_handler(channel: str, message: Message):
                 'message': 'Identifiants invalides'
             })
             client = RedisClient.get_instance()
-            client.publish('auth/login_response', response, request_id=request_id)
+            client.publish('auth/login_response', response.to_dict(), request_id=request_id)
             
             # Supprimer la requête en attente
             delete_pending_request(request_id)
@@ -687,7 +687,17 @@ def volunteer_registration_handler(channel: str, message: Message):
             gpu_memory=gpu_memory,
             ip_address=ip_address,
             communication_port=8002,  # Port par défaut pour les volontaires
-            current_status='available'
+            current_status='available',
+            performance={
+                'tasks_total': 0,
+                'tasks_completed': 0,
+                'tasks_failed': 0,
+                'trust_score': 50.0,  # Score initial de confiance à 50%
+                'avg_completion_time': 0,
+                'total_completion_time': 0,
+                'successful_assignments': 0,
+                'failed_assignments': 0
+            }
         )
         
         # Stocker les informations détaillées de la machine

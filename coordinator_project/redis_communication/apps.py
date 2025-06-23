@@ -55,6 +55,14 @@ class RedisCommunicationConfig(AppConfig):
         except Exception as e:
             logger.error(f"Erreur lors de l'enregistrement des gestionnaires de demandes de réassignation de tâches: {e}")
         
+        # Enregistrer les gestionnaires de statut des tâches
+        try:
+            from .task_status_handlers import register_handlers as register_task_status_handlers
+            register_task_status_handlers(client)
+            logger.info("Gestionnaires de statut des tâches enregistrés")
+        except Exception as e:
+            logger.error(f"Erreur lors de l'enregistrement des gestionnaires de statut des tâches: {e}")
+        
         logger.info("Application redis_communication initialisée")
         logger.info(f"Canaux enregistrés: {list(client.handlers.keys())}")
         

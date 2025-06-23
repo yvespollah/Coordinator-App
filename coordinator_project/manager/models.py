@@ -29,6 +29,7 @@ WORKFLOW_TYPE_CHOICES = (
     ('MATRIX_MULTIPLICATION', 'Multiplication de matrices de grande taille'),
     ('ML_TRAINING', 'Entraînement de modèle machine learning'),
     ('ML_INFERENCE', 'Inférence de modèle machine learning'),
+    ('OPEN_MALARIA', 'Simulation de la propagation du paludisme'),
     ('CUSTOM', 'Workflow personnalisé'),
 )
 
@@ -122,3 +123,42 @@ class Task(Document):
         'verbose_name': 'Tâche',
         'verbose_name_plural': 'Tâches',
     }
+
+class TaskAssignment(Document):
+    """
+    Modèle pour suivre l'historique des assignations de tâches aux volontaires.
+    """
+    id = UUIDField(primary_key=True, default=uuid.uuid4)
+    task = ReferenceField('Task', reverse_delete_rule=CASCADE, required=True)
+    volunteer = ReferenceField('volunteer.Volunteer', reverse_delete_rule=CASCADE, required=True) 
+    assigned_at = DateTimeField(default=datetime.now(timezone.utc))
+    started_at = DateTimeField(null=True)
+    completed_at = DateTimeField(null=True)
+    status = StringField(max_length=20, choices=[
+        ('ASSIGNED', 'Assigné'),
+        ('STARTED', 'Démarré'),
+        ('PAUSED', 'En pause'), 
+        ('RESUMED', 'Repris'),
+        ('COMPLETED', 'Terminé'),
+        ('FAILED', 'Échoué'),
+        ('TIMEOUT', 'Timeout'),
+        ('CANCELLED', 'Annulé')
+    ], default='ASSIGNED')
+    progress = FloatField(default=0)
+    failure_reason = StringField(max_length=500, null=True)
+    performance_metrics = DictField(default=dict)
+    completion_time = FloatField(null=True) # Temps total d'exécution en secondes
+
+    meta = {
+        'collection': 'task_assignments',
+        'ordering': ['-assigned_at'],
+        'indexes': [
+            'task',
+            'volunteer', 
+            'status',
+            'assigned_at'
+        ]
+    }
+
+    def __str__(self):
+        return f"Assignment {self.id}: {self.task.name} -> {self.volunteer.name}"

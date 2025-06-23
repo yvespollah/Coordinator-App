@@ -3,7 +3,6 @@ Commande Django pour démarrer le proxy Redis.
 """
 
 from django.core.management.base import BaseCommand
-from django.conf import settings
 import threading
 import logging
 from communication.proxy import RedisProxy
@@ -16,13 +15,15 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             '--redis-host',
-            default=getattr(settings, 'REDIS_HOST_FOR_PROXY', '0.0.0.0'),
+            # default=getattr(settings, 'REDIS_HOST_FOR_PROXY', '0.0.0.0'),
+            default='0.0.0.0',
             help='Hôte Redis (défaut: settings.REDIS_HOST_FOR_PROXY ou localhost)'
         )
         parser.add_argument(
             '--redis-port',
             type=int,
-            default=getattr(settings, 'REDIS_PORT_FOR_PROXY', 6379),
+            # default=getattr(settings, 'REDIS_PORT_FOR_PROXY', 6379),
+            default= 6379 ,
             help='Port Redis (défaut: settings.REDIS_PORT_FOR_PROXY ou 6379)'
         )
         parser.add_argument(
