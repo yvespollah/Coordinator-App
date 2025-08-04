@@ -261,10 +261,15 @@ class RedisClient:
             # Sérialiser le message
             json_message = message.to_json()
             
+            # Augmenter la taille maximale du message si nécessaire
+            if len(json_message) > int(self.redis.config_get('proto-max-bulk-len').get('proto-max-bulk-len', 512 * 1024)):
+                self.redis.config_set('proto-max-bulk-len', len(json_message) + 9097152)
+           
             # Publier sur Redis
             self.redis.publish(channel, json_message)
             self.stats['messages_sent'] += 1
             self.stats['last_activity'] = time.time()
+            logger.warning(f"Publication sur {channel}: {json_message}")
             
             # Enregistrer le message dans la base de données
             try:

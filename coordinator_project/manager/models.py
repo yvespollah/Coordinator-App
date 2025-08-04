@@ -80,6 +80,10 @@ class Workflow(Document):
     priority = IntField(default=1)
 
     estimated_resources = DictField(default=dict)
+    attempts = IntField(default=3)  # Nombre de tentatives en cas d'échec
+    max_execution_time = FloatField(default=3600)  # Temps maximum d'exécution
+    input_data_size = FloatField(default=0)  # Taille des données d'entrée en Mo
+    retry_count = IntField(default=0)  # Compteur de réessais
     tags = ListField(StringField(), default=list)
     metadata = DictField(default=dict)
 
@@ -113,7 +117,14 @@ class Task(Document):
     attempts = IntField(default=0)
     results = DictField(default=dict, null=True)
     error_details = DictField(default=dict, null=True)
-    docker_image = StringField(max_length=255, null=True)
+    estimated_execution_time = FloatField(default=0)  # Temps estimé en secondes
+    input_data = DictField(default=dict)  # Données d'entrée pour la tâche
+    output_data = DictField(default=dict)  # Données de sortie de la tâche
+    tags = ListField(StringField(), default=list)
+    metadata = DictField(default=dict)  # Métadonnées supplémentaires
+    docker_information = DictField(default=dict)  # Informations Docker pour l'exécution
+    input_data_size = FloatField(default=0)  # Taille des données d'entrée en Mo
+    parameters = ListField(DictField(), default=list)  # Paramètres supplémentaires pour la tâche
 
     def __str__(self):
         return f"{self.name} ({self.workflow.name})"

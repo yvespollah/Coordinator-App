@@ -164,15 +164,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Redis settings for consumers.py
 REDIS_HOST = '127.0.0.1'
-REDIS_PORT = 6380
+REDIS_PORT = 6379
 REDIS_DB = 0
 
 # Redis proxy settings
 REDIS_PROXY_HOST = 'localhost'
 REDIS_PORT_FOR_PROXY = 6379
-REDIS_PROXY_PORT = 6380
+REDIS_PROXY_PORT = 6379
 REDIS_PROXY_DB = 0
-USE_REDIS_PROXY = True  
+USE_REDIS_PROXY = False  
 
 # Redis for channel layers (message broker)
 CHANNEL_LAYERS = {

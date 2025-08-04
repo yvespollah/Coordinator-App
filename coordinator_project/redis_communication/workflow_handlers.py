@@ -67,6 +67,9 @@ def workflow_submission_handler(channel: str, message: Message):
             owner=manager,
             estimated_resources=estimated_resources,
             priority=data.get('priority', 1),
+            attempts=data.get('attempts', 3),  # Nombre de tentatives en cas d'échec
+            max_execution_time=data.get('max_execution_time', 3600),  # Temps maximum d'exécution en secondes
+            input_data_size=data.get('input_data_size', 0),
         )
         workflow.save()        
 

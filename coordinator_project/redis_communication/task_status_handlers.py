@@ -7,6 +7,7 @@ import traceback
 from datetime import datetime, timezone
 from typing import Dict, Any
 
+from volunteer.models import Volunteer
 from redis_communication.message import Message
 from redis_communication.volunteer_performance_handlers import update_volunteer_score
 from manager.models import Task, TaskAssignment
@@ -50,37 +51,70 @@ def handle_task_started(channel: str, message: Message):
 
 def handle_task_progress(channel: str, message: Message):
     """
-    Gestionnaire pour les mises à jour de progression des tâches.
+    Gère la mise à jour du progrès d'une tâche
     """
     try:
         data = message.data
         task_id = data.get('task_id')
         volunteer_id = data.get('volunteer_id')
         progress = data.get('progress', 0)
-
+        
+        # Vérifier les données requises
         if not all([task_id, volunteer_id]):
-            logger.error("Données manquantes dans la mise à jour de progression")
+            logger.error("Données manquantes dans le message de progression")
             return
-
-        # Mettre à jour l'assignation
-        assignment = TaskAssignment.objects.get(
-            task=task_id,
-            volunteer=volunteer_id,
-            status__in=['STARTED', 'RESUMED']
-        )
-        assignment.progress = progress
-        assignment.save()
-
-        # Mettre à jour la tâche
-        task = Task.objects.get(id=task_id)
-        task.progress = progress
-        task.save()
-
-        logger.info(f"Progression de la tâche {task_id}: {progress}%")
-
+            
+        try:
+            # Rechercher l'assignation
+            assignment = TaskAssignment.objects.get(
+                task=task_id,
+                volunteer=volunteer_id,
+                status__in=['ASSIGNED', 'STARTED', 'RESUMED']  # Ajout des états valides
+            )
+            
+            # Mettre à jour le progrès
+            assignment.progress = progress
+            if progress > 0 and assignment.status == 'ASSIGNED':
+                assignment.status = 'STARTED'
+                assignment.started_at = datetime.now(timezone.utc)
+            assignment.save()
+            
+            # Mettre à jour la tâche elle-même
+            task = assignment.task
+            task.progress = progress
+            task.save()
+            
+            logger.info(f"Progression mise à jour - Tâche: {task_id}, Progrès: {progress}%")
+            
+        except TaskAssignment.DoesNotExist:
+            # Créer une nouvelle assignation si elle n'existe pas
+            logger.warning(f"Assignation non trouvée pour tâche={task_id}, volontaire={volunteer_id}")
+            try:
+                task = Task.objects.get(id=task_id)
+                volunteer = Volunteer.objects.get(id=volunteer_id)
+                
+                assignment = TaskAssignment(
+                    task=task,
+                    volunteer=volunteer,
+                    status='STARTED',
+                    progress=progress,
+                    started_at=datetime.now(timezone.utc)
+                )
+                assignment.save()
+                
+                # Mettre à jour la tâche
+                task.progress = progress
+                task.assigned_to = volunteer
+                task.save()
+                
+                logger.info(f"Nouvelle assignation créée pour la tâche {task_id}")
+                
+            except (Task.DoesNotExist, Volunteer.DoesNotExist) as e:
+                logger.error(f"Impossible de créer l'assignation: {str(e)}")
+                return
+                
     except Exception as e:
-        logger.error(f"Erreur lors de la mise à jour de la progression: {e}")
-        logger.error(traceback.format_exc())
+        logger.error(f"Erreur lors du traitement du progrès: {str(e)}")
 
 def handle_task_completed(channel: str, message: Message):
     """
